@@ -1,0 +1,58 @@
+"""Application settings loaded from environment variables.
+
+Secrets are never hardcoded: every sensitive value must come from the
+environment (or a secret manager that populates it).
+"""
+
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="CIVICWATCH_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    environment: Literal["development", "test", "staging", "production"] = "development"
+    app_name: str = "CivicWatch ZW API"
+    api_v1_prefix: str = "/api/v1"
+    log_level: str = "INFO"
+
+    database_url: PostgresDsn = Field(
+        default=PostgresDsn("postgresql+psycopg://civicwatch:civicwatch@localhost:5432/civicwatch")
+    )
+    database_pool_size: int = Field(default=5, ge=1, le=50)
+    database_max_overflow: int = Field(default=10, ge=0, le=100)
+
+    redis_url: RedisDsn = Field(default=RedisDsn("redis://localhost:6379/0"))
+
+    # Origins allowed to call the API from a browser (the Next.js frontend).
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        if isinstance(value, str) and not value.startswith("["):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
+
+    @property
+    def docs_enabled(self) -> bool:
+        # OpenAPI docs stay available outside production; production exposes
+        # the schema only through the authenticated developer portal later.
+        return not self.is_production
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
