@@ -51,5 +51,6 @@ Server components by default; client components only where interactivity or TanS
 | psycopg 3 driver, synchronous SQLAlchemy sessions | Adopted — simpler transactions and testing; revisit only with measured need |
 | Settings via environment, prefix `CIVICWATCH_` | Adopted |
 | Structured JSON logs to stdout with `request_id` | Adopted |
-| Session authentication | **Proposed — awaiting approval**, see `06-security-and-privacy.md` |
-| Tenant isolation via membership-derived scope + PostgreSQL RLS | **Proposed — awaiting approval**, see `06-security-and-privacy.md` |
+| Server-side session authentication with synchronizer CSRF tokens | Approved and implemented (stage 1.2), see `06-security-and-privacy.md` |
+| Tenant isolation via membership-derived scope + PostgreSQL RLS | Approved; implementation in stage 1.3 |
+| Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

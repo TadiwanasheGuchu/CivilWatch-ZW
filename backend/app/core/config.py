@@ -7,7 +7,7 @@ environment (or a secret manager that populates it).
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic import Field, PostgresDsn, RedisDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,12 +35,39 @@ class Settings(BaseSettings):
     # Origins allowed to call the API from a browser (the Next.js frontend).
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
+    # --- Sessions (see docs/06-security-and-privacy.md) ---------------------
+    # The __Host- prefix makes browsers reject the cookie unless it is Secure,
+    # host-only and Path=/. Local HTTP development overrides name and flag.
+    session_cookie_name: str = "__Host-cw_session"
+    session_cookie_secure: bool = True
+    session_idle_timeout_minutes: int = Field(default=60 * 24 * 7, ge=5)
+    session_absolute_timeout_minutes: int = Field(default=60 * 24 * 30, ge=5)
+    # Avoid a database write on every request: refresh last_seen_at at most this often.
+    session_touch_interval_seconds: int = Field(default=300, ge=0)
+
+    # --- Rate limits (fixed windows, enforced in Redis) ----------------------
+    login_attempts_per_ip: int = 30
+    login_failures_per_account: int = 5
+    login_window_seconds: int = 15 * 60
+    registrations_per_ip: int = 10
+    registration_window_seconds: int = 60 * 60
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str) and not value.startswith("["):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @model_validator(mode="after")
+    def _production_requires_secure_cookies(self) -> "Settings":
+        if self.environment in ("staging", "production") and not self.session_cookie_secure:
+            raise ValueError("session_cookie_secure must be true outside development and test")
+        if self.session_cookie_name.startswith("__Host-") and not self.session_cookie_secure:
+            raise ValueError("__Host- cookies require session_cookie_secure=true")
+        if self.session_absolute_timeout_minutes < self.session_idle_timeout_minutes:
+            raise ValueError("absolute session timeout must not be shorter than idle timeout")
+        return self
 
     @property
     def is_production(self) -> bool:

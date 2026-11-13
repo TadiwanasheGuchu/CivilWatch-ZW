@@ -25,10 +25,13 @@ class AppError(Exception):
     status_code: int = 400
     code: str = "bad_request"
 
-    def __init__(self, message: str, *, details: Any = None) -> None:
+    def __init__(
+        self, message: str, *, details: Any = None, headers: dict[str, str] | None = None
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.details = details
+        self.headers = headers
 
 
 class NotFoundError(AppError):
@@ -51,12 +54,24 @@ class ConflictError(AppError):
     code = "conflict"
 
 
+class RateLimitedError(AppError):
+    status_code = 429
+    code = "rate_limited"
+
+    def __init__(self, message: str, *, retry_after_seconds: int) -> None:
+        super().__init__(
+            message,
+            details={"retry_after_seconds": retry_after_seconds},
+            headers={"Retry-After": str(retry_after_seconds)},
+        )
+
+
 class ServiceUnavailableError(AppError):
     status_code = 503
     code = "service_unavailable"
 
 
-def _error_body(code: str, message: str, details: Any = None) -> dict[str, Any]:
+def error_body(code: str, message: str, details: Any = None) -> dict[str, Any]:
     return {
         "error": {
             "code": code,
@@ -77,7 +92,9 @@ def _status_code_slug(status_code: int) -> str:
 async def _app_error_handler(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, AppError)
     return JSONResponse(
-        status_code=exc.status_code, content=_error_body(exc.code, exc.message, exc.details)
+        status_code=exc.status_code,
+        content=error_body(exc.code, exc.message, exc.details),
+        headers=exc.headers,
     )
 
 
@@ -86,7 +103,7 @@ async def _http_error_handler(_: Request, exc: Exception) -> JSONResponse:
     message = exc.detail if isinstance(exc.detail, str) else HTTPStatus(exc.status_code).phrase
     return JSONResponse(
         status_code=exc.status_code,
-        content=_error_body(_status_code_slug(exc.status_code), message),
+        content=error_body(_status_code_slug(exc.status_code), message),
         headers=getattr(exc, "headers", None),
     )
 
@@ -99,7 +116,7 @@ async def _validation_error_handler(_: Request, exc: Exception) -> JSONResponse:
     ]
     return JSONResponse(
         status_code=422,
-        content=_error_body("validation_error", "The request contains invalid data.", details),
+        content=error_body("validation_error", "The request contains invalid data.", details),
     )
 
 
@@ -108,7 +125,7 @@ async def _unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled server error", exc_info=exc)
     return JSONResponse(
         status_code=500,
-        content=_error_body("internal_error", "An unexpected error occurred."),
+        content=error_body("internal_error", "An unexpected error occurred."),
     )
 
 

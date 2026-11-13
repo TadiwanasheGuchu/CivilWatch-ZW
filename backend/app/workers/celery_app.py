@@ -16,5 +16,8 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
 )
-# Task modules are registered here as domain modules add them.
+celery_app.conf.beat_schedule = {
+    "purge-stale-sessions": {"task": "identity.purge_stale_sessions", "schedule": 60 * 60},
+}
+# Discovers app/workers/tasks.py.
 celery_app.autodiscover_tasks(["app.workers"])

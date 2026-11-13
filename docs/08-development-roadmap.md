@@ -7,8 +7,8 @@ Milestones follow `CLAUDE.md` §18. Each is delivered in small, tested stages.
 | Stage | Scope | Status |
 |---|---|---|
 | 1.1 | Repository, docs, Docker Compose, FastAPI core (config, logging, errors, request IDs, security headers, health), Alembic + PostGIS, Celery app, Next.js shell with design tokens, CI | **Done** |
-| 1.2 | Users, Argon2id password auth, server-side sessions, CSRF, rate limiting | Next — needs approval of the auth design in `06-security-and-privacy.md` |
-| 1.3 | Councils, memberships, roles, permission layer, RLS, audit log, cross-tenant tests | Planned |
+| 1.2 | Users, Argon2id password auth, server-side sessions, CSRF, origin check, rate limiting, own-profile and password change, session purge task | **Done** (backend; UI in 1.4) |
+| 1.3 | Councils, memberships, roles, permission layer, RLS, audit log, cross-tenant tests | Next |
 | 1.4 | Frontend sign-in/registration, council workspace switcher limited to memberships | Planned |
 
 Acceptance: users can authenticate and access authorised council workspaces; cross-tenant tests pass.

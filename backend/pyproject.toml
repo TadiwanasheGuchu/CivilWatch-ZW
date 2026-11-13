@@ -14,6 +14,8 @@ dependencies = [
   "geoalchemy2>=0.15",
   "redis>=5.0",
   "celery>=5.4",
+  "argon2-cffi>=23.1",
+  "email-validator>=2.1",
 ]
 
 [project.optional-dependencies]

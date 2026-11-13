@@ -38,6 +38,9 @@ services:
       CIVICWATCH_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-civicwatch}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-civicwatch}
       CIVICWATCH_REDIS_URL: redis://redis:6379/0
       CIVICWATCH_CORS_ORIGINS: http://localhost:3000
+      # Local HTTP only. Staging/production refuse to start with insecure cookies.
+      CIVICWATCH_SESSION_COOKIE_NAME: cw_session
+      CIVICWATCH_SESSION_COOKIE_SECURE: "false"
     depends_on:
       db:
         condition: service_healthy
@@ -67,7 +70,8 @@ services:
 
   worker:
     build: ./backend
-    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO"]
+    # --beat embeds the scheduler for local use; run a separate beat process in production.
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--beat", "--loglevel=INFO"]
     environment: *backend-env
     volumes:
       - ./backend/app:/app/app

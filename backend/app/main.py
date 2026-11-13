@@ -7,7 +7,11 @@ from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
-from app.core.middleware import RequestContextMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import (
+    OriginCheckMiddleware,
+    RequestContextMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -24,6 +28,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Order matters: the last middleware added runs first. The request-context
     # middleware wraps everything so every log line and error carries the ID.
+    app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.cors_origins)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
         CORSMiddleware,

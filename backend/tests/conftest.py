@@ -2,34 +2,92 @@
 
 Tests run against a real PostgreSQL + PostGIS database and Redis, never
 mocks of them. Point CIVICWATCH_DATABASE_URL / CIVICWATCH_REDIS_URL at
-disposable test services (docker compose provides them).
+disposable test services (docker compose and CI provide them): every test
+truncates application tables and flushes the Redis database.
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from typing import Any
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 os.environ.setdefault("CIVICWATCH_ENVIRONMENT", "test")
 
+from app.core.cache import get_redis  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
+from app.core.database import get_session_factory  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_PASSWORD = "correct horse battery"
 
 
 @pytest.fixture(scope="session", autouse=True)
 def migrated_database() -> None:
+    if get_settings().environment != "test":
+        raise RuntimeError("Refusing to run tests outside CIVICWATCH_ENVIRONMENT=test")
     config = Config(os.path.join(BACKEND_ROOT, "alembic.ini"))
     config.set_main_option("script_location", os.path.join(BACKEND_ROOT, "alembic"))
     command.upgrade(config, "head")
 
 
+@pytest.fixture(autouse=True)
+def clean_state() -> Iterator[None]:
+    yield
+    with get_session_factory()() as db:
+        db.execute(text("TRUNCATE users, user_sessions RESTART IDENTITY CASCADE"))
+        db.commit()
+    get_redis().flushdb()
+
+
+@pytest.fixture
+def db() -> Iterator[Session]:
+    with get_session_factory()() as session:
+        yield session
+
+
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     app = create_app(get_settings())
-    with TestClient(app) as test_client:
+    # HTTPS base URL so Secure cookies are sent back, as in production.
+    with TestClient(app, base_url="https://testserver") as test_client:
         yield test_client
+
+
+@pytest.fixture
+def make_client() -> Iterator[Callable[[], TestClient]]:
+    """Independent clients (separate cookie jars) — i.e. separate browsers."""
+    clients: list[TestClient] = []
+
+    def factory() -> TestClient:
+        test_client = TestClient(create_app(get_settings()), base_url="https://testserver")
+        clients.append(test_client)
+        return test_client
+
+    yield factory
+    for test_client in clients:
+        test_client.close()
+
+
+def register(
+    client: TestClient,
+    email: str = "tendai@example.com",
+    password: str = DEFAULT_PASSWORD,
+    full_name: str = "Tendai Moyo",
+) -> dict[str, Any]:
+    response = client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password, "full_name": full_name},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def csrf_headers(session_body: dict[str, Any]) -> dict[str, str]:
+    return {"X-CSRF-Token": session_body["csrf_token"]}

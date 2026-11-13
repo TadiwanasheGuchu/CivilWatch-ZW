@@ -16,15 +16,43 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | Revision | Purpose |
 |---|---|
 | `0001` | Enable `postgis` and `citext` extensions |
+| `0002` | Create `users` and `user_sessions` |
+
+### `users`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `email` | citext, unique | Stored lower-cased; uniqueness is case-insensitive |
+| `password_hash` | varchar(255) | Argon2id encoded hash |
+| `full_name` | varchar(120) | Check: not empty |
+| `is_active` | boolean, default true | Inactive users cannot sign in; their sessions stop working |
+| `is_platform_admin` | boolean, default false | Never settable through the public API |
+| `password_changed_at` | timestamptz | |
+| `last_login_at` | timestamptz, null | |
+| `created_at`, `updated_at` | timestamptz | |
+
+### `user_sessions`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | uuid FK → users, cascade delete | Indexed |
+| `token_hash` | bytea(32), unique | SHA-256 of the cookie token; the token itself is never stored |
+| `csrf_token` | varchar(64) | Synchronizer CSRF token for this session |
+| `created_at`, `last_seen_at` | timestamptz | `last_seen_at` refreshed at most every 5 minutes |
+| `expires_at` | timestamptz | Absolute expiry; indexed for purging |
+| `revoked_at` | timestamptz, null | Set on logout, re-login and password change |
+| `user_agent` | varchar(255), null | Truncated; shown later in a "your devices" list |
+
+Stale sessions (expired, revoked or idle for more than a day past the limit) are deleted hourly by the `identity.purge_stale_sessions` Celery task.
 
 ## Planned tables
 
 | Table | Milestone | Notes |
 |---|---|---|
-| `users` | 1 | `email citext unique`, Argon2id `password_hash`, `is_platform_admin` |
 | `councils` | 1 | `slug citext unique`, `boundary geometry(MultiPolygon,4326)` |
 | `council_memberships` | 1 | `(user_id, council_id)` unique; `role` enum |
-| `user_sessions` | 1 | Hashed session token, expiry, revocation (pending auth approval) |
 | `departments` | 3 | `council_id`, unique `(council_id, name)` |
 | `issue_categories` | 2 | Platform-wide categories listed in `01-product-requirements.md` |
 | `issues` | 2 | `council_id`, `reporter_id`, `category_id`, `status`, `visibility`, `location geography(Point,4326)` |

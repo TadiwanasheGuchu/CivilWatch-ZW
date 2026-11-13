@@ -7,8 +7,10 @@ import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
+from app.core.errors import error_body
 from app.core.logging import request_id_var
 
 logger = logging.getLogger("civicwatch.request")
@@ -58,3 +60,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
             )
         return response
+
+
+class OriginCheckMiddleware(BaseHTTPMiddleware):
+    """Reject state-changing browser requests from origins we do not serve.
+
+    Browsers always send `Origin` on cross-origin POST/PUT/PATCH/DELETE, so a
+    forged form or fetch from another site is refused before it reaches a
+    handler. This also covers endpoints with no session yet (login CSRF).
+    Non-browser clients that send no Origin are unaffected; authenticated
+    requests are additionally protected by the session CSRF token.
+    """
+
+    UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+    def __init__(self, app: ASGIApp, allowed_origins: list[str]) -> None:
+        super().__init__(app)
+        self.allowed_origins = frozenset(origin.rstrip("/") for origin in allowed_origins)
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        origin = request.headers.get("Origin")
+        if (
+            request.method in self.UNSAFE_METHODS
+            and origin is not None
+            and origin.rstrip("/") not in self.allowed_origins
+        ):
+            logger.warning("cross-origin request rejected", extra={"path": request.url.path})
+            return JSONResponse(
+                status_code=403,
+                content=error_body(
+                    "origin_not_allowed", "Requests from this website are not allowed."
+                ),
+            )
+        return await call_next(request)
