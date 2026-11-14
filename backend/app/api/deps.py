@@ -68,6 +68,23 @@ def get_current_session(
     return session
 
 
+def get_optional_user(
+    token: Annotated[str | None, Depends(get_session_token)], service: AuthServiceDep
+) -> User | None:
+    """The signed-in user if there is a valid session, else None (never 401).
+
+    For read-only endpoints anyone may call, where signing in shows more.
+    """
+    session = service.resolve_session(token) if token else None
+    if session is None:
+        return None
+    bind_rls_user(service.db, session.user_id)
+    return session.user
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
 def require_csrf(
     request: Request, session: Annotated[UserSession, Depends(get_current_session)]
 ) -> UserSession:

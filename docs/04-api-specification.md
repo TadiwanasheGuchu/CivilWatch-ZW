@@ -122,6 +122,40 @@ Platform admins only (CSRF). Body `{ "slug", "name" }`; slug 3–60 chars, lower
 ### `GET /api/v1/councils/{council_id}/audit-logs`
 `audit.view`. Newest first: `Page<{ id, occurred_at, actor_user_id, actor_name, action, target_type, target_id, details, request_id }>`. `actor_name` is the actor's current name, or `null` for system and command-line actions.
 
+## Reports
+
+A report is visible to its reporter at any time, and to everyone once it is `PUBLIC` and verified by the council (`VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED` or `CLOSED`). Anything else is `404` to other callers, so its existence is not revealed. Council staff views and status changes arrive in Milestone 3. Reports have no update or delete endpoints: `PUT`, `PATCH` and `DELETE` on `/issues/{id}` return `405`.
+
+### `GET /api/v1/categories`
+Public. The active categories in display order: `[{ id, code, name, description }]`.
+
+### `POST /api/v1/issues`
+Signed in, with CSRF. Body:
+
+```json
+{
+  "council_id": "uuid", "category_id": "uuid",
+  "title": "Large pothole on Samora Machel Avenue",
+  "description": "Deep pothole in the left lane…",
+  "latitude": -17.8292, "longitude": 31.0522,
+  "location_description": "Outside the main post office",
+  "visibility": "PUBLIC"
+}
+```
+
+Title 5–120 characters (single line), description 10–2000, `location_description` optional (≤200), no control characters. Unknown fields (e.g. `status`, `reporter_id`) are rejected. `201 OwnIssue`. Business-rule failures use the standard `422 validation_error` envelope with the offending field in `details[].location`: unknown or inactive council (`council_id`), unknown category (`category_id`), location outside the service area or outside the council's known boundary (`latitude`). `429` after 20 reports per user per hour.
+
+`OwnIssue`: `{ id, reference, council: { id, slug, name }, category: { code, name }, title, description, status, latitude, longitude, location_description, created_at, updated_at, visibility, is_published }`.
+
+### `GET /api/v1/issues/mine`
+Signed in. The caller's own reports, newest first, any visibility: `Page<OwnIssue>`.
+
+### `GET /api/v1/issues`
+Public. Published public reports, newest first: `Page<PublicIssue>`. Filters: `council_id`, `category` (a category code), `status` (one of the published statuses; anything else is `422`). `PublicIssue` is `OwnIssue` without `visibility` and `is_published`, and never identifies the reporter.
+
+### `GET /api/v1/issues/{issue_id}`
+Public; signing in lets reporters see their own unpublished or private reports. Returns the report plus `history: [{ from_status, to_status, created_at }]`, as `OwnIssueDetail` for the reporter or `PublicIssueDetail` for everyone else. `404` if the caller may not see it.
+
 ## Planned endpoint groups
 
-`/departments`, `/issues`, `/assignments`, `/map`, `/analytics`, `/notifications` — each documented here when implemented.
+`/departments`, `/assignments`, `/map`, `/analytics`, `/notifications` — each documented here when implemented.

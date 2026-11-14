@@ -45,9 +45,15 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 
 `SUBMITTED → UNDER_REVIEW → (NEEDS_INFORMATION ↔ UNDER_REVIEW) → VERIFIED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED`, with `REJECTED` and `DUPLICATE` as terminal outcomes of review. The exact transition table and which role may perform each transition will be specified in `03-database-design.md` and `04-api-specification.md` when Milestone 3 begins.
 
+## Reporting decisions (agreed before Milestone 2)
+
+- **Council routing:** the resident chooses the council from the directory. Once council boundaries exist (Milestone 4), the council is pre-selected from the map pin, and the API already refuses a location outside a council's boundary whenever that boundary is known. Every report must also fall inside the service area (Zimbabwe, configurable).
+- **Publication of public reports:** a report marked PUBLIC becomes visible to everyone only after a council verifies it (status VERIFIED or later). Until then only the reporter and that council's staff can see it. REJECTED and DUPLICATE reports are never published. PRIVATE reports are never published.
+- **Accounts:** an account is required to submit a report, so reports can be tracked and abuse limited (20 reports per person per hour by default). Drafts can be prepared offline before signing in (Milestone 2.3).
+- **Visibility is fixed at submission.** Changing it later needs an authorised, audited workflow, which is not built yet.
+- **Residents cannot edit or delete a report after submitting it.** Corrections come through the council's "needs information" step (Milestone 3).
+- **Report references** are sequential and quotable, e.g. `CW-000123`.
+
 ## Open questions (need product decisions)
 
-- **Council routing:** is a report routed to a council automatically by point-in-polygon against council boundaries, or does the resident choose? *Proposed default:* automatic by boundary, with manual choice only when the point falls outside every boundary.
-- **Moderation of public reports:** are public reports visible immediately or only after verification? *Proposed default:* visible after a verification officer approves them.
-- **Anonymous reporting:** must residents have an account to submit? *Proposed default:* yes (account required), to limit abuse and enable tracking.
 - **Contact channels:** SMS/WhatsApp notifications vs. email/in-app only. Affects Milestone 5 cost and providers.

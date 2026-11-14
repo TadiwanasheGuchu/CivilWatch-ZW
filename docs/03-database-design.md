@@ -18,6 +18,7 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `0001` | Enable `postgis` and `citext` extensions |
 | `0002` | Create `users` and `user_sessions` |
 | `0003` | Create `councils`, `council_memberships`, `audit_logs`; grant privileges to `civicwatch_app`; RLS helper functions and policies |
+| `0004` | Create `issue_categories` (seeded with the eight categories), `issues`, `issue_status_history`; grants and RLS policies |
 
 ### `users`
 
@@ -86,17 +87,46 @@ Partial unique index `uq_council_memberships_active` on `(council_id, user_id) W
 
 Indexes: `(council_id, occurred_at)`, `(actor_user_id)`.
 
+### `issue_categories`
+
+Platform-wide reference data seeded by migration 0004: `roads`, `streetlights`, `drainage`, `water`, `waste`, `public-buildings`, `bridges-pavements`, `other`. Columns: `id`, `code` (citext, unique), `name`, `description`, `sort_order`, `is_active`. The API role may only read it.
+
+### `issues`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `reference_number` | bigint identity, unique | Shown as `CW-000123` |
+| `council_id` | uuid FK → councils (restrict) | Chosen by the reporter |
+| `reporter_id` | uuid FK → users (restrict) | Never returned in public responses |
+| `category_id` | uuid FK → issue_categories (restrict) | |
+| `title` | varchar(120) | Check: 5–120 characters |
+| `description` | text | Check: 10–2000 characters |
+| `status` | varchar(32) | Check: the ten statuses in CLAUDE.md §8; new reports are `SUBMITTED` |
+| `visibility` | varchar(16) | Check: `PUBLIC` or `PRIVATE`; fixed at submission |
+| `location` | geography(Point, 4326) | GiST index `ix_issues_location` |
+| `location_description` | varchar(200), null | e.g. "Outside the main post office" |
+| `created_at`, `updated_at` | timestamptz | |
+
+Indexes: `(council_id, status)` for council queues, `(reporter_id, created_at)` for "my reports", and a partial index on `created_at` for published public reports, which public browsing uses (verified with `EXPLAIN`).
+
+### `issue_status_history`
+
+Append-only: one row per status change. Columns: `id`, `issue_id` (FK, restrict), `from_status` (null for submission), `to_status`, `changed_by_user_id` (FK, set null), `created_at` (set by the application so inserts need no `RETURNING`). Index `(issue_id, created_at)`.
+
 ## Database roles and Row-Level Security
 
 | Role | Used by | Privileges |
 |---|---|---|
 | Schema owner (`POSTGRES_USER`) | Alembic only | Owns all tables and the RLS helper functions |
-| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`: SELECT/INSERT only (append-only) |
+| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT (UPDATE arrives with the Milestone 3 workflow) · `issue_categories`: SELECT |
 
 The API sets the transaction-local setting `app.user_id` for every transaction of an authenticated request (`app/core/database.py`). Policies:
 
 - `council_memberships` — read: own rows, rows of councils where the user is an active member, or platform admin. Insert/update: councils where the user is an active `council_admin`, or platform admin. No delete.
 - `audit_logs` — read: platform admin, or `council_admin` of the entry's council. Insert: only as yourself (`actor_user_id` is null or the current user).
+- `issues` — read: the reporter, active staff of the report's council, or anyone (including anonymous requests) when the report is `PUBLIC` and published (`VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`). Insert: only as yourself and only with status `SUBMITTED`. Platform admins get no special access.
+- `issue_status_history` — read: exactly when the report is readable (the policy's subquery runs under the `issues` policies). Insert: only as yourself, for a report you can read.
 
 Helper functions `app_current_user_id()`, `app_is_platform_admin()`, `app_member_council_ids()` and `app_admin_council_ids()` are `SECURITY DEFINER` (owner) so policies on `council_memberships` do not recurse into themselves.
 
@@ -111,10 +141,7 @@ Stale sessions (expired, revoked or idle for more than a day past the limit) are
 | Table | Milestone | Notes |
 |---|---|---|
 | `departments` | 3 | `council_id`, unique `(council_id, name)` |
-| `issue_categories` | 2 | Platform-wide categories listed in `01-product-requirements.md` |
-| `issues` | 2 | `council_id`, `reporter_id`, `category_id`, `status`, `visibility`, `location geography(Point,4326)` |
 | `issue_media` | 2 | Private object key, content type, size; never a public URL |
-| `issue_status_history` | 2 | Append-only, one row per transition |
 | `issue_assignments` | 3 | Department / officer assignment history |
 | `issue_updates`, `issue_comments` | 3 | Internal vs. public visibility flag |
 | `notifications` | 5 | Per-user notification queue |

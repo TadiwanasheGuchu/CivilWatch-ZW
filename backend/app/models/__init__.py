@@ -4,5 +4,27 @@ from app.models.audit import AuditLog
 from app.models.base import Base
 from app.models.councils import Council, CouncilMembership, CouncilRole
 from app.models.identity import User, UserSession
+from app.models.issues import (
+    PUBLISHED_STATUSES,
+    Issue,
+    IssueCategory,
+    IssueStatus,
+    IssueStatusHistory,
+    IssueVisibility,
+)
 
-__all__ = ["AuditLog", "Base", "Council", "CouncilMembership", "CouncilRole", "User", "UserSession"]
+__all__ = [
+    "PUBLISHED_STATUSES",
+    "AuditLog",
+    "Base",
+    "Council",
+    "CouncilMembership",
+    "CouncilRole",
+    "Issue",
+    "IssueCategory",
+    "IssueStatus",
+    "IssueStatusHistory",
+    "IssueVisibility",
+    "User",
+    "UserSession",
+]

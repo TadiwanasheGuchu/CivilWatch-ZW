@@ -54,6 +54,16 @@ Three independent layers; each would stop a cross-council read on its own.
 
 - There is no API yet to deactivate a council or a user account; this is done by an operator and will get an audited workflow.
 
+## Report privacy (stage 2.1)
+
+- **Who sees a report** is decided twice: explicitly in `IssueService.get_for_viewer` and the repository's publication filter, and again by RLS on `issues` (see `03-database-design.md`). Tests prove each layer on its own.
+- **Unpublished means invisible.** A PUBLIC report is hidden from everyone except its reporter and council staff until the council verifies it. This blocks abusive content and personal data in a report before a person has looked at it.
+- **Public responses never identify the reporter**: no reporter ID, name or email, and no visibility flag.
+- **No modification after submission** through the API, and the API role has no `UPDATE`/`DELETE` privilege on `issues` or `issue_status_history`. Status changes will only happen through Milestone 3's validated transitions, each recorded in the history.
+- **Location checks**: coordinates must be valid, inside the service area, and inside the chosen council's boundary when known (PostGIS `ST_Covers`). Choosing a council is only addressing the report; it grants no council access.
+- **Abuse limits**: an account is required, and each user may submit 20 reports per hour (configurable, fails closed if Redis is down).
+- **Photos** are not accepted yet. Stage 2.2 adds them with content validation, EXIF stripping, private storage and short-lived signed URLs.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

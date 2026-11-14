@@ -56,7 +56,8 @@ def clean_state(owner_engine: Engine) -> Iterator[None]:
     with owner_engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE audit_logs, council_memberships, councils, user_sessions, users "
+                "TRUNCATE issue_status_history, issues, audit_logs, council_memberships, councils, "
+                "user_sessions, users "
                 "RESTART IDENTITY CASCADE"
             )
         )

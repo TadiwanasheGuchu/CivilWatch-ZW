@@ -54,4 +54,5 @@ Server components by default; client components only where interactivity or TanS
 | Server-side session authentication with synchronizer CSRF tokens | Approved and implemented (stage 1.2), see `06-security-and-privacy.md` |
 | Tenant isolation via membership-derived scope + PostgreSQL RLS | Implemented (stage 1.3) |
 | Two database roles: schema owner for migrations, unprivileged `civicwatch_app` for the API | Adopted (stage 1.3) — required for RLS to apply; see `06-security-and-privacy.md` |
+| Report locations stored as `geography(Point, 4326)` with a GiST index | Adopted (stage 2.1) — metre-accurate distance queries for nearby search and clustering later |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     login_window_seconds: int = 15 * 60
     registrations_per_ip: int = 10
     registration_window_seconds: int = 60 * 60
+    reports_per_user: int = 20
+    report_window_seconds: int = 60 * 60
+
+    # --- Service area -----------------------------------------------------------
+    # Reports must fall inside this box (west, south, east, north; WGS 84).
+    # Default: Zimbabwe with a small margin. Council boundaries (Milestone 4)
+    # add a precise check per council.
+    service_area_bbox: tuple[float, float, float, float] = (25.0, -22.6, 33.2, -15.4)
 
     @field_validator("cors_origins", mode="before")
     @classmethod

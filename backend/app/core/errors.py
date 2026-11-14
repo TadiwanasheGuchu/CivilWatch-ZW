@@ -66,6 +66,20 @@ class RateLimitedError(AppError):
         )
 
 
+class FieldValidationError(AppError):
+    """A business-rule failure on one request field, reported in the same
+    shape as schema validation errors so clients can show it on that field."""
+
+    status_code = 422
+    code = "validation_error"
+
+    def __init__(self, field: str, message: str) -> None:
+        super().__init__(
+            "The request contains invalid data.",
+            details=[{"location": ["body", field], "message": message, "type": "value_error"}],
+        )
+
+
 class ServiceUnavailableError(AppError):
     status_code = 503
     code = "service_unavailable"

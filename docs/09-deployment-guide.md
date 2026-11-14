@@ -74,6 +74,9 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_LOGIN_WINDOW_SECONDS` | `900` | Sign-in rate-limit window |
 | `CIVICWATCH_REGISTRATIONS_PER_IP` | `10` | Registrations per IP per window |
 | `CIVICWATCH_REGISTRATION_WINDOW_SECONDS` | `3600` | Registration rate-limit window |
+| `CIVICWATCH_REPORTS_PER_USER` | `20` | Reports one user may submit per window |
+| `CIVICWATCH_REPORT_WINDOW_SECONDS` | `3600` | Report rate-limit window |
+| `CIVICWATCH_SERVICE_AREA_BBOX` | `[25.0,-22.6,33.2,-15.4]` | West, south, east, north (WGS 84) that every report must fall inside; default covers Zimbabwe |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000/api/v1` | API base URL baked into the frontend build |
 
 ## Production
