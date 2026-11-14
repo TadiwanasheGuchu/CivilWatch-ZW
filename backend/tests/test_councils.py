@@ -100,6 +100,12 @@ def test_member_workspace_lists_role_and_permissions(
         "members.view",
         "members.manage",
         "audit.view",
+        "departments.manage",
+        "issues.view",
+        "issues.review",
+        "issues.assign",
+        "issues.work",
+        "issues.close",
     }
 
 

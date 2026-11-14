@@ -18,6 +18,11 @@ from app.services.images import process_photo
 logger = logging.getLogger(__name__)
 
 
+# Reporters may change photos before review, and while the council has asked
+# them for more information.
+OPEN_FOR_REPORTER = frozenset({IssueStatus.SUBMITTED, IssueStatus.NEEDS_INFORMATION})
+
+
 class PhotoTooLargeError(AppError):
     status_code = 413
     code = "photo_too_large"
@@ -56,9 +61,9 @@ class PhotoService:
         # Only the reporter may add photos; anyone else learns nothing.
         if issue is None or issue.reporter_id != reporter.id:
             raise NotFoundError("Report not found.")
-        if issue.status != IssueStatus.SUBMITTED:
+        if issue.status not in OPEN_FOR_REPORTER:
             raise ReportLockedError(
-                "Photos can only be added while the report is waiting for council review."
+                "Photos can only be added before review or when the council asks for information."
             )
         self._ensure_room(issue_id)
 
@@ -101,9 +106,9 @@ class PhotoService:
         )
         if media is None:
             raise NotFoundError("Photo not found.")
-        if issue.status != IssueStatus.SUBMITTED:
+        if issue.status not in OPEN_FOR_REPORTER:
             raise ReportLockedError(
-                "Photos can only be removed while the report is waiting for council review."
+                "Photos can only be removed before review or when the council asks for information."
             )
         keys = (media.display_key, media.thumbnail_key)
         self.db.delete(media)

@@ -19,6 +19,7 @@ from app.schemas.issues import (
     PublicIssue,
     PublicIssueDetail,
 )
+from app.schemas.operations import InformationResponse
 from app.schemas.pagination import Page, PageParams, page_params
 from app.services.issues import IssueService
 from app.services.photos import PhotoService
@@ -191,3 +192,24 @@ def remove_photo(
 ) -> Response:
     photos.remove_photo(user, issue_id, photo_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{issue_id}/information",
+    response_model=OwnIssueDetail,
+    summary="Answer the council's request for more information",
+    responses={
+        404: {"description": "Not your report"},
+        409: {"description": "The council is not waiting for information"},
+    },
+)
+def provide_information(
+    issue_id: uuid.UUID,
+    payload: InformationResponse,
+    user: CurrentUser,
+    service: ServiceDep,
+    present: PresenterDep,
+) -> OwnIssueDetail:
+    service.respond_with_information(user, issue_id, payload.note)
+    view = service.get_for_viewer(issue_id, user)
+    return present.own_detail(view.issue, view.history)

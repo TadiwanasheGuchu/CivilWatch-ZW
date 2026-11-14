@@ -13,6 +13,13 @@ Milestones follow `CLAUDE.md` §18. Each is delivered in small, tested stages.
 
 Acceptance: users can authenticate and access authorised council workspaces; cross-tenant tests pass. **Met** — Milestone 1 is complete.
 
+## Milestone 3 — Council operations
+
+| Stage | Scope | Status |
+|---|---|---|
+| 3.1 | Workflow rules and transitions, departments, assignment, staff-only notes, council queue and summary, reporter answers to information requests | **Done** (backend) |
+| 3.2 | Council screens: dashboard with live counts, queue with filters, report review and actions, assignment, departments, staff departments; maintenance officer "My work" on phones with repair evidence photos | Next |
+
 ## Later milestones
 
 2. Reporting (in progress):

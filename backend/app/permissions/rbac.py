@@ -15,15 +15,37 @@ class Permission(StrEnum):
     MEMBERS_VIEW = "members.view"
     MEMBERS_MANAGE = "members.manage"
     AUDIT_VIEW = "audit.view"
+    DEPARTMENTS_MANAGE = "departments.manage"
+    ISSUES_VIEW = "issues.view"
+    ISSUES_REVIEW = "issues.review"
+    ISSUES_ASSIGN = "issues.assign"
+    ISSUES_WORK = "issues.work"
+    ISSUES_CLOSE = "issues.close"
 
 
-_STAFF_BASELINE = frozenset({Permission.WORKSPACE_VIEW, Permission.MEMBERS_VIEW})
+_STAFF_BASELINE = frozenset(
+    {Permission.WORKSPACE_VIEW, Permission.MEMBERS_VIEW, Permission.ISSUES_VIEW}
+)
 
+# Agreed before Milestone 3: verification officers review; department
+# managers assign and close within their department; maintenance officers
+# carry out work assigned to them; council administrators can do everything.
+# Department and assignee scoping is applied in app/services/workflow.py.
 ROLE_PERMISSIONS: dict[CouncilRole, frozenset[Permission]] = {
-    CouncilRole.COUNCIL_ADMIN: _STAFF_BASELINE | {Permission.MEMBERS_MANAGE, Permission.AUDIT_VIEW},
-    CouncilRole.DEPARTMENT_MANAGER: _STAFF_BASELINE,
-    CouncilRole.VERIFICATION_OFFICER: _STAFF_BASELINE,
-    CouncilRole.MAINTENANCE_OFFICER: _STAFF_BASELINE,
+    CouncilRole.COUNCIL_ADMIN: _STAFF_BASELINE
+    | {
+        Permission.MEMBERS_MANAGE,
+        Permission.AUDIT_VIEW,
+        Permission.DEPARTMENTS_MANAGE,
+        Permission.ISSUES_REVIEW,
+        Permission.ISSUES_ASSIGN,
+        Permission.ISSUES_WORK,
+        Permission.ISSUES_CLOSE,
+    },
+    CouncilRole.DEPARTMENT_MANAGER: _STAFF_BASELINE
+    | {Permission.ISSUES_ASSIGN, Permission.ISSUES_WORK, Permission.ISSUES_CLOSE},
+    CouncilRole.VERIFICATION_OFFICER: _STAFF_BASELINE | {Permission.ISSUES_REVIEW},
+    CouncilRole.MAINTENANCE_OFFICER: _STAFF_BASELINE | {Permission.ISSUES_WORK},
 }
 
 # Platform admins without a membership may administer a council's staff

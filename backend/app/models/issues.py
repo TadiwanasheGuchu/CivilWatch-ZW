@@ -11,11 +11,13 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Identity,
     Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
     cast,
     func,
     text,
@@ -102,6 +104,9 @@ class Issue(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Geography(geometry_type="POINT", srid=4326, spatial_index=False), nullable=False
     )
     location_description: Mapped[str | None] = mapped_column(String(200))
+    duplicate_of_issue_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("issues.id", ondelete="RESTRICT")
+    )
 
     latitude: Mapped[float] = column_property(func.ST_Y(cast(location, Geometry)))
     longitude: Mapped[float] = column_property(func.ST_X(cast(location, Geometry)))
@@ -119,6 +124,7 @@ class Issue(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("char_length(title) BETWEEN 5 AND 120", name="title_length"),
         CheckConstraint("char_length(description) BETWEEN 10 AND 2000", name="description_length"),
         Index("ix_issues_location", "location", postgresql_using="gist"),
+        UniqueConstraint("id", "council_id", name="uq_issues_id_council_id"),
         Index("ix_issues_council_id_status", "council_id", "status"),
         Index("ix_issues_reporter_id_created_at", "reporter_id", "created_at"),
         # Public browsing only ever reads published public reports.
@@ -151,6 +157,9 @@ class IssueStatusHistory(UUIDPrimaryKeyMixin, Base):
     changed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
+    # Message to the reporter (a question, a rejection reason, a resolution
+    # summary). Shown to the reporter and council staff, never to the public.
+    note: Mapped[str | None] = mapped_column(Text)
     # Set in Python so the INSERT needs no RETURNING (see AuditLog).
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -161,6 +170,7 @@ class IssueStatusHistory(UUIDPrimaryKeyMixin, Base):
 
     __table_args__ = (
         CheckConstraint(f"to_status IN ({_STATUS_VALUES})", name="to_status_valid"),
+        CheckConstraint("note IS NULL OR char_length(note) <= 1000", name="note_length"),
         Index("ix_issue_status_history_issue_id_created_at", "issue_id", "created_at"),
     )
 
@@ -196,4 +206,84 @@ class IssueMedia(UUIDPrimaryKeyMixin, Base):
         CheckConstraint("content_type = 'image/jpeg'", name="content_type_valid"),
         CheckConstraint("width > 0 AND height > 0 AND byte_size > 0", name="dimensions_positive"),
         Index("ix_issue_media_issue_id_created_at", "issue_id", "created_at"),
+    )
+
+
+class IssueAssignment(UUIDPrimaryKeyMixin, Base):
+    """Which department (and optionally which officer) holds a report.
+
+    Reassignment ends the current row and adds a new one, keeping history.
+    """
+
+    __tablename__ = "issue_assignments"
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    council_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    department_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    assignee_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    assigned_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        # Issue and department must both belong to the assignment's council.
+        ForeignKeyConstraint(
+            ["issue_id", "council_id"],
+            ["issues.id", "issues.council_id"],
+            name="fk_issue_assignments_issue_council",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["department_id", "council_id"],
+            ["departments.id", "departments.council_id"],
+            name="fk_issue_assignments_department_council",
+            ondelete="RESTRICT",
+        ),
+        Index(
+            "uq_issue_assignments_current",
+            "issue_id",
+            unique=True,
+            postgresql_where=text("ended_at IS NULL"),
+        ),
+        Index("ix_issue_assignments_assignee_user_id", "assignee_user_id"),
+        Index("ix_issue_assignments_department_id", "department_id"),
+    )
+
+
+class IssueUpdate(UUIDPrimaryKeyMixin, Base):
+    """A staff-only working note on a report. Never shown to residents or the public."""
+
+    __tablename__ = "issue_updates"
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    council_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    author_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["issue_id", "council_id"],
+            ["issues.id", "issues.council_id"],
+            name="fk_issue_updates_issue_council",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("char_length(body) BETWEEN 1 AND 2000", name="body_length"),
+        Index("ix_issue_updates_issue_id_created_at", "issue_id", "created_at"),
     )

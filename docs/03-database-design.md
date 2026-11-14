@@ -20,6 +20,8 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `0003` | Create `councils`, `council_memberships`, `audit_logs`; grant privileges to `civicwatch_app`; RLS helper functions and policies |
 | `0004` | Create `issue_categories` (seeded with the eight categories), `issues`, `issue_status_history`; grants and RLS policies |
 | `0005` | Create `issue_media`; grants and RLS policies |
+| `0006` | Let reporters delete their photos before review |
+| `0007` | Council operations: `departments`, `council_memberships.department_id`, `issue_assignments`, `issue_updates`, `issues.duplicate_of_issue_id`, `issue_status_history.note`; status updates by staff and reporters; RLS |
 
 ### `users`
 
@@ -129,19 +131,49 @@ Append-only: one row per status change. Columns: `id`, `issue_id` (FK, restrict)
 
 Index `(issue_id, created_at)`. Reports load their photos with one extra query per page (`selectin`), never one per report.
 
+### `departments`
+
+`id`, `council_id` (FK), `name` (citext; unique per council; 2–80 characters), `description`, `is_active`, timestamps. A unique `(id, council_id)` lets other tables require that a department belongs to the same council.
+
+`council_memberships.department_id` (nullable) references `departments(id, council_id)` together with the membership's `council_id`, so a membership can never point at another council's department.
+
+### `issue_assignments`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `issue_id`, `council_id` | uuid | Composite FK → `issues(id, council_id)` |
+| `department_id` | uuid | Composite FK with `council_id` → `departments(id, council_id)` |
+| `assignee_user_id` | uuid FK → users, null | Optional officer |
+| `assigned_by_user_id` | uuid FK → users (set null) | |
+| `created_at`, `ended_at` | timestamptz | Reassignment ends the current row and adds a new one |
+
+Partial unique index `uq_issue_assignments_current` on `issue_id WHERE ended_at IS NULL`: at most one current assignment per report. Indexes on assignee and department.
+
+### `issue_updates`
+
+Staff-only working notes: `id`, `issue_id` + `council_id` (composite FK), `author_user_id`, `body` (1–2000), `created_at`. Append-only.
+
+### Other changes in 0007
+
+`issues.duplicate_of_issue_id` (FK → issues) and a unique `(id, council_id)`; `issue_status_history.note` (≤1000 characters), the message to the reporter.
+
 ## Database roles and Row-Level Security
 
 | Role | Used by | Privileges |
 |---|---|---|
 | Schema owner (`POSTGRES_USER`) | Alembic only | Owns all tables and the RLS helper functions |
-| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT (UPDATE arrives with the Milestone 3 workflow) · `issue_media`: SELECT/INSERT · `issue_categories`: SELECT |
+| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT, UPDATE of `status`, `duplicate_of_issue_id`, `updated_at` only · `issue_media`: SELECT/INSERT/DELETE · `departments`: SELECT/INSERT, UPDATE of name/description/is_active · `issue_assignments`: SELECT/INSERT, UPDATE of `ended_at` · `issue_updates`: SELECT/INSERT · `issue_categories`: SELECT |
 
 The API sets the transaction-local setting `app.user_id` for every transaction of an authenticated request (`app/core/database.py`). Policies:
 
 - `council_memberships` — read: own rows, rows of councils where the user is an active member, or platform admin. Insert/update: councils where the user is an active `council_admin`, or platform admin. No delete.
 - `audit_logs` — read: platform admin, or `council_admin` of the entry's council. Insert: only as yourself (`actor_user_id` is null or the current user).
 - `issues` — read: the reporter, active staff of the report's council, or anyone (including anonymous requests) when the report is `PUBLIC` and published (`VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`). Insert: only as yourself and only with status `SUBMITTED`. Platform admins get no special access.
-- `issue_media` — read: exactly when the report is readable. Insert: only as yourself, only for your own report, and only while it is `SUBMITTED`.
+- `issue_media` — read: exactly when the report is readable. Insert and delete: only for your own report, and only while it is `SUBMITTED` or `NEEDS_INFORMATION`.
+- `issues` (update) — staff of the report's council; or the reporter, only from `NEEDS_INFORMATION` and only to `UNDER_REVIEW`. Which staff may make which change is decided by the workflow rules in the API.
+- `departments` — read: council staff. Insert/update: the council's administrators.
+- `issue_assignments`, `issue_updates` — read: council staff only (never residents or the public). Insert: council staff, as themselves.
 - `issue_status_history` — read: exactly when the report is readable (the policy's subquery runs under the `issues` policies). Insert: only as yourself, for a report you can read.
 
 Helper functions `app_current_user_id()`, `app_is_platform_admin()`, `app_member_council_ids()` and `app_admin_council_ids()` are `SECURITY DEFINER` (owner) so policies on `council_memberships` do not recurse into themselves.

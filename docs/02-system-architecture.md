@@ -60,4 +60,6 @@ Server components by default; client components only where interactivity or TanS
 | Report drafts kept in the browser's IndexedDB (photos as Blobs), with an in-memory fallback | Adopted (stage 2.3) — offline drafting on budget phones |
 | Photos compressed in the browser before upload (≤1600 px JPEG); uploads use XMLHttpRequest for progress | Adopted (stage 2.3) — saves mobile data; the server still validates and re-encodes |
 | MapLibre GL JS with raster tiles, loaded only when a map is shown; its worker served from `public/maplibre/` | Adopted (stage 2.3) |
+| Status workflow as one declarative table (`services/workflow.py`): permission, scope (council, department, assignee) and note rule per transition; the API offers each caller exactly the transitions they may make | Adopted (stage 3.1) |
+| Status changes lock the report row (`SELECT … FOR UPDATE`) so concurrent changes cannot both succeed | Adopted (stage 3.1) |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

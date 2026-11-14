@@ -121,8 +121,14 @@ class StatusChange(BaseModel):
     created_at: datetime
 
 
+class OwnStatusChange(StatusChange):
+    """The reporter also sees the council's messages to them."""
+
+    note: str | None = None
+
+
 class OwnIssueDetail(OwnIssue):
-    history: list[StatusChange]
+    history: list[OwnStatusChange]
     photos: list[PhotoRead]
 
 

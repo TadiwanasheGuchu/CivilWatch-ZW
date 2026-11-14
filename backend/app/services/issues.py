@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.errors import FieldValidationError, NotFoundError
+from app.core.errors import AppError, FieldValidationError, NotFoundError
 from app.core.rate_limit import RateLimiter
 from app.models.councils import Council
 from app.models.identity import User
@@ -28,6 +28,11 @@ from app.schemas.issues import CreateIssueRequest
 from app.schemas.pagination import PageParams
 
 logger = logging.getLogger(__name__)
+
+
+class ReportNotAwaitingInformationError(AppError):
+    status_code = 409
+    code = "not_awaiting_information"
 
 
 @dataclass(frozen=True)
@@ -123,6 +128,38 @@ class IssueService:
         return IssueView(
             issue=issue, history=self.issues.history(issue.id), viewer_is_reporter=is_reporter
         )
+
+    def respond_with_information(self, reporter: User, issue_id: uuid.UUID, note: str) -> Issue:
+        """The reporter answers the council's request; the report returns to review."""
+        issue = self.issues.get(issue_id)
+        if issue is None or issue.reporter_id != reporter.id:
+            raise NotFoundError("Report not found.")
+        not_waiting = ReportNotAwaitingInformationError(
+            "The council is not waiting for information on this report."
+        )
+        if issue.status != IssueStatus.NEEDS_INFORMATION:
+            raise not_waiting
+        # Lock, then re-check: staff may have moved the report meanwhile. RLS
+        # only lets the reporter lock it while information is requested.
+        locked = self.db.scalar(select(Issue.id).where(Issue.id == issue_id).with_for_update())
+        if locked is None:
+            raise not_waiting
+        self.db.refresh(issue)
+        if issue.status != IssueStatus.NEEDS_INFORMATION:
+            raise not_waiting
+        self.issues.add_history(
+            IssueStatusHistory(
+                issue_id=issue.id,
+                from_status=issue.status,
+                to_status=IssueStatus.UNDER_REVIEW,
+                changed_by_user_id=reporter.id,
+                note=note,
+            )
+        )
+        issue.status = IssueStatus.UNDER_REVIEW
+        self.db.commit()
+        logger.info("reporter provided information", extra={"issue_id": str(issue.id)})
+        return issue
 
     def _check_location(self, council: Council, latitude: float, longitude: float) -> None:
         west, south, east, north = self.settings.service_area_bbox

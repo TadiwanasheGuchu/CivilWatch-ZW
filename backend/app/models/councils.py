@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     String,
     text,
@@ -67,6 +68,8 @@ class CouncilMembership(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Department managers and maintenance officers work within one department.
+    department_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
 
     council: Mapped[Council] = relationship(lazy="joined")
     user: Mapped[User] = relationship(foreign_keys=[user_id], lazy="joined")
@@ -82,6 +85,13 @@ class CouncilMembership(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             postgresql_where=text("revoked_at IS NULL"),
         ),
         Index("ix_council_memberships_user_id", "user_id"),
+        # The department must belong to the same council as the membership.
+        ForeignKeyConstraint(
+            ["department_id", "council_id"],
+            ["departments.id", "departments.council_id"],
+            name="fk_council_memberships_department_council",
+            ondelete="RESTRICT",
+        ),
     )
 
     @property

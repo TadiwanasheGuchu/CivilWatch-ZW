@@ -41,9 +41,19 @@ A person may hold roles in several councils; every permission is scoped to a cou
 
 Roads and potholes · Streetlights · Drainage and flooding · Water infrastructure · Waste management · Public buildings · Bridges and pavements · Other infrastructure.
 
+## Council workflow decisions (agreed before Milestone 3)
+
+- **Verification officers** start review, ask the reporter for information, verify, reject, or mark a report as a duplicate of another in the same council.
+- **Department managers** assign verified reports within their own department (to the department, optionally to one officer), reassign within it, start or resolve its work, and close or reopen resolved work.
+- **Maintenance officers** start and resolve only the work assigned to them.
+- **Council administrators** can do all of the above for any department, and manage departments.
+- Managers and maintenance officers belong to **one department**, set on their membership.
+- **Messages to the reporter** (a question, a rejection reason, a resolution summary) are required where the reporter needs an explanation, and are shown to the reporter and staff. The **public timeline shows statuses only**. **Staff-only notes** are never shown outside the council.
+- Staff see the **reporter's name only**, never their email; questions go through "needs information". The reporter answers in the app, which returns the report to review; they may also add or remove photos while the council waits.
+
 ## Report lifecycle
 
-`SUBMITTED → UNDER_REVIEW → (NEEDS_INFORMATION ↔ UNDER_REVIEW) → VERIFIED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED`, with `REJECTED` and `DUPLICATE` as terminal outcomes of review. The exact transition table and which role may perform each transition will be specified in `03-database-design.md` and `04-api-specification.md` when Milestone 3 begins.
+`SUBMITTED → UNDER_REVIEW → (NEEDS_INFORMATION ↔ UNDER_REVIEW) → VERIFIED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED`, with `REJECTED` and `DUPLICATE` as terminal outcomes of review. The full transition table, with the role that may make each change, is in `04-api-specification.md` (and in code: `backend/app/services/workflow.py`).
 
 ## Reporting decisions (agreed before Milestone 2)
 

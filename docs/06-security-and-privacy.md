@@ -73,6 +73,13 @@ Three independent layers; each would stop a cross-council read on its own.
 - **Failure handling**: if storage is down, the upload fails with 503 and nothing is recorded; if the database write fails after storing, the stored objects are deleted.
 - **Not yet done**: residents cannot delete a photo they added by mistake (planned with the report form in 2.3); HEIC photos are not accepted (browsers on Android and iOS normally upload JPEG).
 
+## Council operations (stage 3.1)
+
+- **Least privilege per role**, decided by one transition table and enforced in the API; each response tells the caller exactly which changes they may make, so the UI never guesses. Department managers act only within their department, maintenance officers only on work assigned to them, and platform admins have no access to reports.
+- **Messages vs. internal notes**: a status change may carry a message to the reporter. Staff-only notes live in a separate table that only council staff can read (API and RLS) and that cannot be edited or deleted. Public timelines show statuses only.
+- **Reporter privacy**: staff see the reporter's name, never their email or any other contact detail.
+- **Database backstops**: the API role may update only a report's status (and duplicate link), only as staff of that council, or as the reporter answering a request for information (and then only back to review). Departments are created only by the council's administrators; assignments and notes are invisible outside the council. Composite foreign keys make it impossible to attach another council's department to a membership or assignment.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

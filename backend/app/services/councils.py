@@ -6,7 +6,13 @@ from datetime import UTC, datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import AppError, ConflictError, NotFoundError, PermissionDeniedError
+from app.core.errors import (
+    AppError,
+    ConflictError,
+    FieldValidationError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from app.models.audit import AuditLog
 from app.models.councils import Council, CouncilMembership, CouncilRole
 from app.models.identity import User
@@ -14,8 +20,11 @@ from app.permissions.council_access import CouncilAccess
 from app.permissions.rbac import Permission
 from app.repositories.councils import AuditRepository, CouncilRepository, MembershipRepository
 from app.repositories.identity import UserRepository
+from app.repositories.operations import DepartmentRepository
 from app.schemas.pagination import PageParams
 from app.services.audit import record_audit
+
+DEPARTMENT_ROLES = frozenset({CouncilRole.DEPARTMENT_MANAGER, CouncilRole.MAINTENANCE_OFFICER})
 
 
 class LastAdministratorError(AppError):
@@ -72,6 +81,9 @@ class CouncilService:
             access.council.id, offset=page.offset, limit=page.page_size
         )
 
+    def department_names(self, access: CouncilAccess) -> dict[uuid.UUID, str]:
+        return {d.id: d.name for d in DepartmentRepository(self.db).list(access.council.id)}
+
     def add_member(
         self, access: CouncilAccess, *, email: str, role: CouncilRole
     ) -> CouncilMembership:
@@ -98,20 +110,58 @@ class CouncilService:
             raise ConflictError("This person is already a member of the council.") from exc
         return membership
 
-    def change_role(
-        self, access: CouncilAccess, membership_id: uuid.UUID, *, role: CouncilRole
+    def update_member(
+        self,
+        access: CouncilAccess,
+        membership_id: uuid.UUID,
+        *,
+        role: CouncilRole | None = None,
+        department_id: uuid.UUID | None = None,
+        department_given: bool = False,
     ) -> CouncilMembership:
+        """Change a staff member's role and/or department.
+
+        Only department managers and maintenance officers belong to a
+        department; moving someone to another role clears it.
+        """
         access.require(Permission.MEMBERS_MANAGE)
         membership = self._get_member(access, membership_id)
-        previous = membership.role
-        if previous == role:
-            return membership
-        if previous == CouncilRole.COUNCIL_ADMIN:
+        new_role = role or membership.role
+        if membership.role == CouncilRole.COUNCIL_ADMIN and new_role != CouncilRole.COUNCIL_ADMIN:
             self._ensure_not_last_admin(access)
-        membership.role = role
-        self._audit(
-            access, "membership.role_changed", membership, {"from": str(previous), "to": role.value}
-        )
+
+        new_department = department_id if department_given else membership.department_id
+        if new_role not in DEPARTMENT_ROLES:
+            if department_given and department_id is not None:
+                raise FieldValidationError(
+                    "department_id",
+                    "Only department managers and maintenance officers belong to a department.",
+                )
+            new_department = None
+        elif department_given and department_id is not None:
+            department = DepartmentRepository(self.db).get(access.council.id, department_id)
+            if department is None or not department.is_active:
+                raise FieldValidationError("department_id", "Choose an active department.")
+
+        if new_role != membership.role:
+            self._audit(
+                access,
+                "membership.role_changed",
+                membership,
+                {"from": str(membership.role), "to": new_role.value},
+            )
+            membership.role = new_role
+        if new_department != membership.department_id:
+            self._audit(
+                access,
+                "membership.department_changed",
+                membership,
+                {
+                    "from": str(membership.department_id) if membership.department_id else None,
+                    "to": str(new_department) if new_department else None,
+                },
+            )
+            membership.department_id = new_department
         self.db.commit()
         return membership
 

@@ -72,6 +72,7 @@ def test_submit_report(world, make_client) -> None:
         {
             "from_status": None,
             "to_status": "SUBMITTED",
+            "note": None,
             "created_at": detail["history"][0]["created_at"],
         }
     ]

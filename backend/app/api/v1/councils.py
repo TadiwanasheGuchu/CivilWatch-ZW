@@ -10,10 +10,11 @@ from app.models.councils import CouncilMembership
 from app.schemas.councils import (
     AddMemberRequest,
     AuditLogRead,
-    ChangeRoleRequest,
     CouncilSummary,
     CreateCouncilRequest,
+    DepartmentSummary,
     MemberRead,
+    UpdateMemberRequest,
     WorkspaceResponse,
 )
 from app.schemas.pagination import Page, PageParams, page_params
@@ -37,8 +38,18 @@ def get_council_service(db: DbDep) -> CouncilService:
 ServiceDep = Annotated[CouncilService, Depends(get_council_service)]
 
 
-def _member_read(membership: CouncilMembership) -> MemberRead:
+def _member_read(
+    membership: CouncilMembership, departments: dict[uuid.UUID, str] | None = None
+) -> MemberRead:
+    department_name = (
+        (departments or {}).get(membership.department_id) if membership.department_id else None
+    )
     return MemberRead(
+        department=(
+            DepartmentSummary(id=membership.department_id, name=department_name)
+            if membership.department_id and department_name
+            else None
+        ),
         membership_id=membership.id,
         user_id=membership.user_id,
         full_name=membership.user.full_name,
@@ -96,8 +107,9 @@ def workspace(access: CouncilAccessDep) -> WorkspaceResponse:
 )
 def list_members(access: CouncilAccessDep, service: ServiceDep, page: PageDep) -> Page[MemberRead]:
     items, total = service.list_members(access, page)
+    departments = service.department_names(access)
     return Page(
-        items=[_member_read(m) for m in items],
+        items=[_member_read(m, departments) for m in items],
         page=page.page,
         page_size=page.page_size,
         total=total,
@@ -120,16 +132,23 @@ def add_member(
 @router.patch(
     "/{council_id}/members/{membership_id}",
     response_model=MemberRead,
-    summary="Change a staff member's role",
+    summary="Change a staff member's role and/or department",
     responses={409: {"description": "Would remove the last administrator"}, **_ERRORS},
 )
-def change_member_role(
+def update_member(
     membership_id: uuid.UUID,
-    payload: ChangeRoleRequest,
+    payload: UpdateMemberRequest,
     access: CouncilAccessDep,
     service: ServiceDep,
 ) -> MemberRead:
-    return _member_read(service.change_role(access, membership_id, role=payload.role))
+    membership = service.update_member(
+        access,
+        membership_id,
+        role=payload.role,
+        department_id=payload.department_id,
+        department_given="department_id" in payload.model_fields_set,
+    )
+    return _member_read(membership, service.department_names(access))
 
 
 @router.delete(

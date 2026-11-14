@@ -2,7 +2,7 @@ import re
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models.councils import CouncilRole
 from app.permissions.rbac import Permission
@@ -64,7 +64,13 @@ class MemberRead(BaseModel):
     full_name: str
     email: str
     role: CouncilRole
+    department: "DepartmentSummary | None" = None
     granted_at: datetime
+
+
+class DepartmentSummary(BaseModel):
+    id: uuid.UUID
+    name: str
 
 
 class AddMemberRequest(BaseModel):
@@ -74,10 +80,21 @@ class AddMemberRequest(BaseModel):
     role: CouncilRole
 
 
-class ChangeRoleRequest(BaseModel):
+class UpdateMemberRequest(BaseModel):
+    """Send `role`, `department_id`, or both. `department_id: null` removes the department."""
+
     model_config = ConfigDict(extra="forbid")
 
-    role: CouncilRole
+    role: CouncilRole | None = None
+    department_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _something_to_change(self) -> "UpdateMemberRequest":
+        if not self.model_fields_set & {"role", "department_id"}:
+            raise ValueError("Send a role or a department to change.")
+        if "role" in self.model_fields_set and self.role is None:
+            raise ValueError("Role cannot be empty.")
+        return self
 
 
 class AuditLogRead(BaseModel):

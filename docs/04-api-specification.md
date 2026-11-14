@@ -164,6 +164,66 @@ Signed in, with CSRF. The reporter may remove a photo while the report is `SUBMI
 ### `POST /api/v1/issues/{issue_id}/photos`
 Signed in, with CSRF; `multipart/form-data` with one `file` field. Only the reporter, and only while the report is `SUBMITTED`. JPEG, PNG or WebP up to 10 MB; the stored photo is a re-encoded JPEG of at most 1600 px (plus a 400 px thumbnail) with all metadata removed. `201 { id, url, thumbnail_url, width, height }`. Errors: `404` not your report; `409 report_locked` once the council has started on it; `409 photo_limit_reached` after 5 photos; `413 photo_too_large`; `422 invalid_photo` for anything that is not a readable JPEG/PNG/WebP or is over 40 megapixels; `429` after 60 uploads per hour; `503` if storage is unavailable (nothing is saved).
 
+### `POST /api/v1/issues/{issue_id}/information`
+The reporter answers a request for information (CSRF). Body `{ "note" }` (1–1000 characters). The report returns to `UNDER_REVIEW` with the answer in its history. `409 not_awaiting_information` if the council is not waiting for information; `404` for anyone but the reporter. Returns `OwnIssueDetail`.
+
+`OwnIssueDetail.history[]` includes `note`: the council's message to the reporter, or the reporter's answer. Public responses never include notes.
+
+## Council operations
+
+All under `/api/v1/councils/{council_id}`; access comes from the caller's own membership (see "Councils"). Residents and platform administrators without a membership get `403`. A report or department from another council is `404`.
+
+| Permission | admin | dept. manager | verification officer | maintenance officer |
+|---|---|---|---|---|
+| `issues.view` | ✓ | ✓ | ✓ | ✓ |
+| `issues.review` | ✓ | | ✓ | |
+| `issues.assign` | ✓ | own department | | |
+| `issues.work` | ✓ | own department | | assigned to them |
+| `issues.close` | ✓ | own department | | |
+| `departments.manage` | ✓ | | | |
+
+### Status transitions
+
+| From | To | Permission | Note to reporter |
+|---|---|---|---|
+| SUBMITTED | UNDER_REVIEW | review | |
+| SUBMITTED, UNDER_REVIEW, NEEDS_INFORMATION | REJECTED | review | required |
+| SUBMITTED, UNDER_REVIEW | DUPLICATE | review | needs `duplicate_of_reference` (same council) |
+| UNDER_REVIEW | NEEDS_INFORMATION | review | required (the question) |
+| UNDER_REVIEW | VERIFIED | review | |
+| NEEDS_INFORMATION | UNDER_REVIEW | review (or the reporter, by answering) | |
+| VERIFIED | ASSIGNED | assign — via `/assignment` | default "Assigned to the … department." |
+| ASSIGNED | IN_PROGRESS | work (assignee or their manager) | |
+| IN_PROGRESS | RESOLVED | work (assignee or their manager) | required (what was done) |
+| RESOLVED | CLOSED | close (department) | |
+| RESOLVED | IN_PROGRESS | close (department) — reopen | required |
+
+Anything else is `409 invalid_transition`. A permitted change by someone outside its scope is `403`. A missing required note is a `422` on `note`. Changes lock the report, so of two simultaneous changes from the same status, one succeeds and the other gets `409`.
+
+### `GET /issues/summary`
+`{ counts: [{ status, count }] for all ten statuses, assigned_to_me }`. Counts are live database totals.
+
+### `GET /issues`
+The council's queue (all visibilities): `Page<StaffIssueSummary>`. Filters: `status` (repeatable), `category`, `department_id`, `assigned_to_me=true`, `q` (title text, or a reference such as `CW-000123` or `123`), `sort=newest|oldest`. Each item includes `visibility` and the current `assignment: { department, assignee, assigned_at } | null`.
+
+### `GET /issues/{issue_id}`
+`StaffIssueDetail`: the summary fields plus `description`, `reporter_name` (no contact details), `duplicate_of`, `photos`, `history[]` (with `note` and `changed_by`), `updates[]` (staff-only notes), `available_transitions[]` (`{ to_status, label, note_required, needs_duplicate_of }` — exactly what this caller may do now) and `can_assign`.
+
+### `POST /issues/{issue_id}/transitions`
+CSRF. Body `{ "to_status", "note"?, "duplicate_of_reference"? }`. Returns the updated `StaffIssueDetail`.
+
+### `POST /issues/{issue_id}/assignment`
+`issues.assign`, CSRF. Body `{ "department_id", "assignee_user_id"?, "note"? }`. The department must be active; managers may only use their own department and cannot take reports from another. The assignee must be a manager or maintenance officer of that department. A `VERIFIED` report becomes `ASSIGNED`; reassigning an `ASSIGNED` or `IN_PROGRESS` report keeps its status and records the new assignment. `409` if the report is not verified yet.
+
+### `POST /issues/{issue_id}/updates`
+Any staff, CSRF. Body `{ "body" }` (1–2000). A staff-only note; returns `201` with the detail.
+
+### `GET /departments` · `POST /departments` · `PATCH /departments/{department_id}`
+Any staff may list; administrators create (`{ name, description? }`) and update (`{ name?, description?, is_active? }`). Names are unique per council, ignoring case (`409`). Changes are audited.
+
+### `PATCH /members/{membership_id}` (changed)
+Body `{ "role"?, "department_id"? }` — at least one. A department applies only to managers and maintenance officers (`422` otherwise); changing someone to another role clears it. Member responses now include `department: { id, name } | null`. Audited as `membership.role_changed` / `membership.department_changed`.
+
 ## Planned endpoint groups
 
-`/departments`, `/assignments`, `/map`, `/analytics`, `/notifications` — each documented here when implemented.
+`/map`, `/analytics`, `/notifications` — each documented here when implemented.

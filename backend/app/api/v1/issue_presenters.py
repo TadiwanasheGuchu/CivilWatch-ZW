@@ -9,6 +9,7 @@ from app.models.issues import Issue, IssueMedia, IssueStatusHistory
 from app.schemas.issues import (
     OwnIssue,
     OwnIssueDetail,
+    OwnStatusChange,
     PhotoRead,
     PublicIssue,
     PublicIssueDetail,
@@ -48,7 +49,7 @@ class IssuePresenter:
     def own_detail(self, issue: Issue, history: list[IssueStatusHistory]) -> OwnIssueDetail:
         return OwnIssueDetail(
             **self.own(issue).model_dump(),
-            history=[StatusChange.model_validate(h) for h in history],
+            history=[OwnStatusChange.model_validate(h) for h in history],
             photos=[self.photo(m) for m in issue.photos],
         )
 
