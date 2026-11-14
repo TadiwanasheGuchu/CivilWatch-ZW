@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = True
     session_idle_timeout_minutes: int = Field(default=60 * 24 * 7, ge=5)
     session_absolute_timeout_minutes: int = Field(default=60 * 24 * 30, ge=5)
+    # Council staff and platform admins hold access to other people's data,
+    # so their sessions are shorter: a working shift idle, a week at most.
+    staff_session_idle_timeout_minutes: int = Field(default=12 * 60, ge=5)
+    staff_session_absolute_timeout_minutes: int = Field(default=60 * 24 * 7, ge=5)
     # Avoid a database write on every request: refresh last_seen_at at most this often.
     session_touch_interval_seconds: int = Field(default=300, ge=0)
 
@@ -70,6 +74,11 @@ class Settings(BaseSettings):
             raise ValueError("__Host- cookies require session_cookie_secure=true")
         if self.session_absolute_timeout_minutes < self.session_idle_timeout_minutes:
             raise ValueError("absolute session timeout must not be shorter than idle timeout")
+        if (
+            self.staff_session_idle_timeout_minutes > self.session_idle_timeout_minutes
+            or self.staff_session_absolute_timeout_minutes > self.session_absolute_timeout_minutes
+        ):
+            raise ValueError("staff session limits must not be longer than resident limits")
         return self
 
     @property

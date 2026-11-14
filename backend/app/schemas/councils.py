@@ -86,6 +86,8 @@ class AuditLogRead(BaseModel):
     id: uuid.UUID
     occurred_at: datetime
     actor_user_id: uuid.UUID | None
+    # Display name at read time; None for system and command-line actions.
+    actor_name: str | None = None
     action: str
     target_type: str | None
     target_id: uuid.UUID | None

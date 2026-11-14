@@ -253,6 +253,8 @@ def test_staff_changes_are_audited(make_client: Callable[[], TestClient]) -> Non
     assert actions == ["membership.granted", "membership.granted", "council.created"]
     latest = entries[0]
     assert latest["actor_user_id"] == admin_session["user"]["id"]
+    assert latest["actor_name"] == "harare Admin"
+    assert entries[1]["actor_name"] == "Platform Admin"
     assert latest["details"]["role"] == "verification_officer"
     assert latest["details"]["via_platform_admin"] is False
     assert latest["request_id"]

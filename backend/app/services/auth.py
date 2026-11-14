@@ -8,10 +8,12 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.database import bind_rls_user
 from app.core.errors import AppError, AuthenticationError, ConflictError
 from app.core.rate_limit import RateLimiter
 from app.core.security import (
@@ -21,6 +23,7 @@ from app.core.security import (
     password_needs_rehash,
     verify_password,
 )
+from app.models.councils import Council, CouncilMembership
 from app.models.identity import User, UserSession
 from app.repositories.identity import SessionRepository, UserRepository
 from app.services.audit import record_audit
@@ -144,6 +147,11 @@ class AuthService:
         )
         if session is None:
             return None
+        if self._exceeds_staff_limits(session, now) and self._is_staff(session.user):
+            session.revoked_at = now
+            self.db.commit()
+            logger.info("staff session expired", extra={"user_id": str(session.user_id)})
+            return None
         touch_after = session.last_seen_at + timedelta(
             seconds=self.settings.session_touch_interval_seconds
         )
@@ -194,6 +202,34 @@ class AuthService:
         logger.info("password changed", extra={"user_id": str(user.id)})
 
     # --- Internals ---------------------------------------------------------------
+
+    def _exceeds_staff_limits(self, session: UserSession, now: datetime) -> bool:
+        idle = timedelta(minutes=self.settings.staff_session_idle_timeout_minutes)
+        lifetime = timedelta(minutes=self.settings.staff_session_absolute_timeout_minutes)
+        return session.last_seen_at <= now - idle or session.created_at <= now - lifetime
+
+    def _is_staff(self, user: User) -> bool:
+        """Platform admin, or an active member of any active council.
+
+        Only evaluated for sessions that are past the staff limits, so the
+        common request path never pays for this query.
+        """
+        if user.is_platform_admin:
+            return True
+        # council_memberships is under RLS: act as the user to read their own rows.
+        bind_rls_user(self.db, user.id)
+        return bool(
+            self.db.scalar(
+                select(
+                    exists().where(
+                        CouncilMembership.user_id == user.id,
+                        CouncilMembership.revoked_at.is_(None),
+                        CouncilMembership.council_id == Council.id,
+                        Council.is_active.is_(True),
+                    )
+                )
+            )
+        )
 
     def _issue_session(self, user: User, client: ClientContext) -> IssuedSession:
         now = _now()

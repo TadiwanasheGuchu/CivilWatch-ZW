@@ -67,6 +67,8 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_SESSION_COOKIE_SECURE` | `true` | Must be `true` in staging/production (enforced at start-up) |
 | `CIVICWATCH_SESSION_IDLE_TIMEOUT_MINUTES` | `10080` (7 days) | Session ends after this long without activity |
 | `CIVICWATCH_SESSION_ABSOLUTE_TIMEOUT_MINUTES` | `43200` (30 days) | Maximum session lifetime |
+| `CIVICWATCH_STAFF_SESSION_IDLE_TIMEOUT_MINUTES` | `720` (12 hours) | Idle limit for council staff and platform admins |
+| `CIVICWATCH_STAFF_SESSION_ABSOLUTE_TIMEOUT_MINUTES` | `10080` (7 days) | Maximum session lifetime for staff |
 | `CIVICWATCH_LOGIN_FAILURES_PER_ACCOUNT` | `5` | Failed sign-ins per account per window before lockout |
 | `CIVICWATCH_LOGIN_ATTEMPTS_PER_IP` | `30` | Sign-in attempts per IP per window |
 | `CIVICWATCH_LOGIN_WINDOW_SECONDS` | `900` | Sign-in rate-limit window |

@@ -16,7 +16,8 @@
 - Email + password, hashed with **Argon2id** (`argon2-cffi`; t=3, m=64 MiB, p=4, pinned in `core/security.py`). Hashes are upgraded on the next sign-in if parameters change.
 - Failed sign-ins for unknown emails still run a full Argon2 verification against a dummy hash, so response time does not reveal which emails are registered. Wrong password, unknown email and deactivated account return the same message.
 - **Server-side sessions**: a random 256-bit token in an `HttpOnly; Secure; SameSite=Lax` cookie named `__Host-cw_session` (host-only, Path=/). Only its SHA-256 hash is stored in `user_sessions`.
-  - Idle timeout 7 days, absolute lifetime 30 days (configurable). These suit residents on shared or intermittently connected phones; shorter limits for council staff are planned with roles in stage 1.3.
+  - Residents: idle timeout 7 days, absolute lifetime 30 days, suited to shared or intermittently connected phones.
+  - Council staff and platform admins: idle timeout **12 hours** (a working shift) and absolute lifetime **7 days**, because their sessions reach other people's data. The stricter limits are checked only for sessions already past them, so normal requests pay nothing extra; a session found over the limit is revoked. Someone removed from all councils returns to resident limits. All four values are configurable; staff limits may not exceed resident limits.
   - Revoked on logout, when the same browser signs in again, and (for all *other* sessions) on password change. Deactivating a user invalidates their sessions immediately.
   - Staging/production refuse to start unless the cookie is `Secure`.
 - **CSRF**: synchronizer token. Each session has its own random `csrf_token`, returned in the sign-in response and `GET /auth/session` (never in a cookie, so it works when the API and web app are on different hosts). Every state-changing request with a session must echo it in `X-CSRF-Token`; comparison is constant-time.
@@ -51,8 +52,16 @@ Three independent layers; each would stop a cross-council read on its own.
 
 ### Remaining limitations
 
-- Staff sessions use the same timeouts as residents (7 days idle / 30 days absolute). Shorter staff limits are planned for stage 1.4, together with the staff sign-in UI.
 - There is no API yet to deactivate a council or a user account; this is done by an operator and will get an audited workflow.
+
+## Frontend
+
+- The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.
+- Route guards (`RequireSession`) and permission-based tabs only shape the UI; every API call is authorised again by the backend.
+- `?next=` redirects after sign-in accept only same-site paths (`safeNextPath`), so crafted links cannot send people to another website.
+- Signing out reloads the home page, discarding every cached response; when a different user signs in on the same tab, cached data from the previous user is dropped.
+- Any 401 or CSRF rejection refreshes the session, so expired or revoked sessions are reflected immediately.
+- User-provided text is rendered as text by React, never as HTML.
 
 ## Privacy rules (from CLAUDE.md §8)
 

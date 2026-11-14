@@ -25,3 +25,8 @@ def test_production_refuses_insecure_session_cookies() -> None:
 def test_host_prefixed_cookie_requires_secure_flag() -> None:
     with pytest.raises(ValidationError):
         Settings(environment="development", session_cookie_secure=False)
+
+
+def test_staff_limits_cannot_exceed_resident_limits() -> None:
+    with pytest.raises(ValidationError):
+        Settings(staff_session_idle_timeout_minutes=60 * 24 * 365)

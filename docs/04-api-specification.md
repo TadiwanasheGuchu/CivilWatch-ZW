@@ -45,7 +45,7 @@ Returns `503` with the same shape and `"status": "degraded"` when any dependency
 - Signing in sets an `HttpOnly; Secure; SameSite=Lax` session cookie (`__Host-cw_session` in production). Browsers must send requests with credentials (`fetch(..., { credentials: "include" })`).
 - Sign-in responses and `GET /auth/session` return a `csrf_token`. Every `POST`/`PUT`/`PATCH`/`DELETE` made with a session must send it as `X-CSRF-Token`, otherwise `403 csrf_token_invalid`.
 - State-changing requests carrying an `Origin` header that is not an allowed frontend origin are refused with `403 origin_not_allowed`.
-- `401 authentication_required` means there is no valid session (missing, expired, idle, revoked, or the account was deactivated).
+- `401 authentication_required` means there is no valid session (missing, expired, idle, revoked, or the account was deactivated). Council staff and platform admins have shorter session limits than residents (see `06-security-and-privacy.md`).
 - `429 rate_limited` includes a `Retry-After` header and `details.retry_after_seconds`.
 
 `SessionResponse`:
@@ -120,7 +120,7 @@ Platform admins only (CSRF). Body `{ "slug", "name" }`; slug 3–60 chars, lower
 `members.manage` (CSRF). `204`; sets `revoked_at` (history kept) and access ends immediately. `409 last_council_admin` as above. Audited as `membership.revoked`.
 
 ### `GET /api/v1/councils/{council_id}/audit-logs`
-`audit.view`. Newest first: `Page<{ id, occurred_at, actor_user_id, action, target_type, target_id, details, request_id }>`.
+`audit.view`. Newest first: `Page<{ id, occurred_at, actor_user_id, actor_name, action, target_type, target_id, details, request_id }>`. `actor_name` is the actor's current name, or `null` for system and command-line actions.
 
 ## Planned endpoint groups
 

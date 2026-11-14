@@ -128,7 +128,7 @@ class CouncilService:
 
     def list_audit_logs(
         self, access: CouncilAccess, page: PageParams
-    ) -> tuple[list[AuditLog], int]:
+    ) -> tuple[list[tuple[AuditLog, str | None]], int]:
         access.require(Permission.AUDIT_VIEW)
         return self.audit.list_for_council(
             access.council.id, offset=page.offset, limit=page.page_size

@@ -112,6 +112,13 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Start API
         working-directory: backend
+        env:
+          # Plain HTTP on localhost, and many registrations from one IP across
+          # six viewport projects. Production keeps the secure defaults.
+          CIVICWATCH_SESSION_COOKIE_NAME: cw_session
+          CIVICWATCH_SESSION_COOKIE_SECURE: "false"
+          CIVICWATCH_REGISTRATIONS_PER_IP: "10000"
+          CIVICWATCH_LOGIN_ATTEMPTS_PER_IP: "10000"
         run: |
           pip install -e .
           alembic upgrade head
@@ -126,6 +133,9 @@ jobs:
           npm run build
       - name: Run Playwright
         working-directory: frontend
+        env:
+          # Tests appoint platform admins through the operator CLI.
+          E2E_BACKEND_PYTHON: python
         run: npm run test:e2e
       - name: API log on failure
         if: failure()

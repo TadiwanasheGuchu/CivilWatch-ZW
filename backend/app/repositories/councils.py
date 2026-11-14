@@ -104,8 +104,17 @@ class AuditRepository:
 
     def list_for_council(
         self, council_id: uuid.UUID, *, offset: int, limit: int
-    ) -> tuple[list[AuditLog], int]:
+    ) -> tuple[list[tuple[AuditLog, str | None]], int]:
+        """Entries newest first, each with the actor's current name (None for system)."""
         base = select(AuditLog).where(AuditLog.council_id == council_id)
         total = self.db.scalar(select(func.count()).select_from(base.subquery())) or 0
-        stmt = base.order_by(AuditLog.occurred_at.desc(), AuditLog.id).offset(offset).limit(limit)
-        return list(self.db.scalars(stmt).all()), total
+        stmt = (
+            select(AuditLog, User.full_name)
+            .outerjoin(User, User.id == AuditLog.actor_user_id)
+            .where(AuditLog.council_id == council_id)
+            .order_by(AuditLog.occurred_at.desc(), AuditLog.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = self.db.execute(stmt).all()
+        return [(entry, name) for entry, name in rows], total

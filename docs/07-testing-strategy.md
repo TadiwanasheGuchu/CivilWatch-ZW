@@ -24,6 +24,9 @@ Playwright runs every spec at 320, 375, 390, 768, 1024 and 1440 px widths and as
 - **Tenant isolation (mandatory)**: council A's administrator cannot read B's workspace, staff or audit log, cannot add, change or remove B's staff, cannot reach B's membership through A's URL, sees only A's rows in lists; council IDs in bodies are rejected; a person in two councils has the right role in each.
 - **Row-Level Security at the database**, as the API's role: the role cannot bypass RLS; unfiltered queries return only the user's councils; no identity → no rows; residents see nothing; cross-council inserts are refused and updates affect no rows; the audit log cannot be updated or deleted; audit entries cannot impersonate another actor; the identity does not leak between transactions on pooled connections.
 - Operator CLI: granting and revoking platform admin, audited.
+- Staff sessions: idle and lifetime limits end staff and platform-admin sessions (and revoke them), residents keep longer sessions, former staff return to resident limits; settings reject staff limits longer than resident limits.
+- Frontend unit/component: API mutation helper (CSRF header, credentials, 204), server field-error mapping, user-facing error messages (rate limits, network, 5xx), `?next=` redirect safety, form schemas, `Field` accessibility wiring, sign-in form (validation, safe redirect, API errors, lockout message, password toggle), staff row (confirmation before removal, explicit role save, API refusal shown), audit action descriptions, session cache cleared when the user changes.
+- E2E (all six widths, real API): register → account → sign out → sign in; protected page → sign in → back; field validation and duplicate email; wrong password; name update and password change (other session signed out); council administrator adds, re-roles and removes staff, is stopped from demoting the last administrator, and sees each change in the audit log; read-only staff view; resident refused a council workspace; switching between two councils.
 - Frontend: API error mapping; status panel OK, degraded and unreachable states.
 - E2E: home page layout at six widths; live status from the real API; touch target size.
 
@@ -32,6 +35,8 @@ Playwright runs every spec at 320, 375, 390, 768, 1024 and 1440 px widths and as
 Cross-council private-report access · residents modifying others' reports · unauthorised assignment · public access to private media · private data in public analytics · invalid status transitions.
 
 ## Running locally
+
+E2E tests need the API (as `civicwatch_app`, with `CIVICWATCH_SESSION_COOKIE_NAME=cw_session`, `CIVICWATCH_SESSION_COOKIE_SECURE=false` for plain-HTTP localhost, and raised `CIVICWATCH_REGISTRATIONS_PER_IP` / `CIVICWATCH_LOGIN_ATTEMPTS_PER_IP`) and a production build of the frontend. They appoint platform admins through the operator CLI, using `E2E_BACKEND_PYTHON` (default `backend/.venv/bin/python`) with the same database environment variables. Test accounts use unique `@example.com` addresses, so runs do not collide.
 
 ```bash
 cd backend && pytest

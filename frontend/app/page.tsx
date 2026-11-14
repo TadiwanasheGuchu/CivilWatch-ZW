@@ -1,6 +1,7 @@
 import { Camera, ClipboardCheck, ListChecks } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { HomeAccountActions } from "@/features/authentication/home-account-actions";
 import { SystemStatusPanel } from "@/features/system-status/system-status-panel";
 
 const STEPS: Array<{ icon: LucideIcon; title: string; body: string }> = [
@@ -54,10 +55,13 @@ export default function HomePage() {
             ))}
           </ol>
 
-          <p className="mt-6 rounded-[var(--radius-control)] border-l-4 border-amber bg-surface px-4 py-3 text-sm">
-            <span className="font-semibold text-amber-text">In development.</span> Resident
-            accounts and report submission are being built and are not open yet.
-          </p>
+          <div className="mt-6 space-y-4">
+            <p className="rounded-[var(--radius-control)] border-l-4 border-amber bg-surface px-4 py-3 text-sm">
+              <span className="font-semibold text-amber-text">In development.</span> Report
+              submission is being built and is not open yet. You can already create an account.
+            </p>
+            <HomeAccountActions />
+          </div>
         </div>
 
         <aside>

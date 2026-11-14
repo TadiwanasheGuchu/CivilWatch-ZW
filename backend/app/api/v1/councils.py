@@ -156,7 +156,10 @@ def list_audit_logs(
 ) -> Page[AuditLogRead]:
     items, total = service.list_audit_logs(access, page)
     return Page(
-        items=[AuditLogRead.model_validate(entry) for entry in items],
+        items=[
+            AuditLogRead.model_validate(entry).model_copy(update={"actor_name": name})
+            for entry, name in items
+        ],
         page=page.page,
         page_size=page.page_size,
         total=total,
