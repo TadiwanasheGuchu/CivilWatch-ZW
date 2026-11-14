@@ -1,5 +1,6 @@
 """Shared request dependencies: services, current session, CSRF."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -8,17 +9,19 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import get_redis
 from app.core.config import Settings, get_settings
-from app.core.database import get_db
+from app.core.database import bind_rls_user, get_db
 from app.core.errors import AuthenticationError, PermissionDeniedError
 from app.core.rate_limit import RateLimiter
 from app.core.security import tokens_match
 from app.models.identity import User, UserSession
+from app.permissions.council_access import CouncilAccess, resolve_council_access
 from app.services.auth import AuthService, ClientContext
 
 CSRF_HEADER = "X-CSRF-Token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+DbDep = Annotated[Session, Depends(get_db)]
 
 
 class CsrfError(PermissionDeniedError):
@@ -60,6 +63,8 @@ def get_current_session(
     session = service.resolve_session(token) if token else None
     if session is None:
         raise AuthenticationError("Please sign in to continue.")
+    # From here on, every transaction in this request runs as this user for RLS.
+    bind_rls_user(service.db, session.user_id)
     return session
 
 
@@ -82,3 +87,10 @@ def get_current_user(session: CurrentSession) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_council_access(council_id: uuid.UUID, user: CurrentUser, db: DbDep) -> CouncilAccess:
+    return resolve_council_access(db, user, council_id)
+
+
+CouncilAccessDep = Annotated[CouncilAccess, Depends(get_council_access)]

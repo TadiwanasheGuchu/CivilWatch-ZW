@@ -82,6 +82,46 @@ Requires CSRF. Body `{ "full_name" }` only — any other field (e.g. `is_platfor
 ### `POST /api/v1/users/me/password`
 Requires CSRF. Body `{ "current_password", "new_password" }`. `204` on success; every other session of the account is revoked. `400 invalid_current_password` if the current password is wrong (5 attempts per 15 minutes, then `429`). `422` if the new password is invalid or unchanged.
 
+### `GET /api/v1/users/me/memberships`
+The councils where the signed-in user is active staff — the workspace switcher. Each item: `{ id, council: { id, slug, name }, role, created_at }`. Residents get `[]`.
+
+## Councils
+
+Pagination for collections: `?page=1&page_size=20` (max 100). Response `{ "items": [...], "page", "page_size", "total" }`.
+
+Access to `/councils/{council_id}/…` is decided from the caller's own active membership (or platform-admin flag). A council ID in the URL selects the council but never grants access; request bodies cannot carry a council ID (unknown fields are rejected). Not a member → `403`; unknown or inactive council → `404`; a membership ID that belongs to a different council → `404`.
+
+| Permission | council_admin | department_manager | verification_officer | maintenance_officer | platform admin (no membership) |
+|---|---|---|---|---|---|
+| `workspace.view` | ✓ | ✓ | ✓ | ✓ | — |
+| `members.view` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `members.manage` | ✓ | — | — | — | ✓ |
+| `audit.view` | ✓ | — | — | — | ✓ |
+
+### `GET /api/v1/councils`
+Public directory of active councils, sorted by name: `Page<{ id, slug, name }>`. No sign-in required.
+
+### `POST /api/v1/councils`
+Platform admins only (CSRF). Body `{ "slug", "name" }`; slug 3–60 chars, lowercase letters/digits with single hyphens. `201 { id, slug, name }`; `409` if the slug exists. Audited as `council.created`.
+
+### `GET /api/v1/councils/{council_id}/workspace`
+`{ council, role, via_platform_admin, permissions[] }` for the caller. Informational for the UI; the backend re-checks permissions on every request.
+
+### `GET /api/v1/councils/{council_id}/members`
+`members.view`. `Page<{ membership_id, user_id, full_name, email, role, granted_at }>`, active staff only.
+
+### `POST /api/v1/councils/{council_id}/members`
+`members.manage` (CSRF). Body `{ "email", "role" }`. `201` member. `404` if no active account uses the email; `409` if already an active member; `422` for an unknown role (including `resident`). Audited as `membership.granted`.
+
+### `PATCH /api/v1/councils/{council_id}/members/{membership_id}`
+`members.manage` (CSRF). Body `{ "role" }`. `200` member. `409 last_council_admin` if it would leave the council without an administrator. Audited as `membership.role_changed`.
+
+### `DELETE /api/v1/councils/{council_id}/members/{membership_id}`
+`members.manage` (CSRF). `204`; sets `revoked_at` (history kept) and access ends immediately. `409 last_council_admin` as above. Audited as `membership.revoked`.
+
+### `GET /api/v1/councils/{council_id}/audit-logs`
+`audit.view`. Newest first: `Page<{ id, occurred_at, actor_user_id, action, target_type, target_id, details, request_id }>`.
+
 ## Planned endpoint groups
 
-`/auth`, `/users`, `/councils`, `/departments`, `/issues`, `/assignments`, `/map`, `/analytics`, `/notifications` — each documented here when implemented.
+`/departments`, `/issues`, `/assignments`, `/map`, `/analytics`, `/notifications` — each documented here when implemented.

@@ -17,6 +17,7 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 |---|---|
 | `0001` | Enable `postgis` and `citext` extensions |
 | `0002` | Create `users` and `user_sessions` |
+| `0003` | Create `councils`, `council_memberships`, `audit_logs`; grant privileges to `civicwatch_app`; RLS helper functions and policies |
 
 ### `users`
 
@@ -45,14 +46,70 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `revoked_at` | timestamptz, null | Set on logout, re-login and password change |
 | `user_agent` | varchar(255), null | Truncated; shown later in a "your devices" list |
 
+### `councils`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `slug` | citext, unique | Check: lowercase letters/digits with single hyphens |
+| `name` | varchar(160) | Check: not empty |
+| `is_active` | boolean | Inactive councils are hidden and inaccessible |
+| `boundary` | geometry(MultiPolygon, 4326), null | GiST index; populated in Milestone 4 |
+| `created_at`, `updated_at` | timestamptz | |
+
+### `council_memberships`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `council_id` | uuid FK → councils (restrict) | |
+| `user_id` | uuid FK → users (restrict) | Indexed |
+| `role` | varchar(32) | Check: `council_admin`, `department_manager`, `verification_officer`, `maintenance_officer` |
+| `granted_by_user_id` | uuid FK → users (set null), null | |
+| `revoked_at` | timestamptz, null | Removal sets this; rows are never deleted |
+| `created_at`, `updated_at` | timestamptz | |
+
+Partial unique index `uq_council_memberships_active` on `(council_id, user_id) WHERE revoked_at IS NULL` prevents duplicate active memberships while keeping history.
+
+### `audit_logs`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `occurred_at` | timestamptz | Set by the application (see RLS note below) |
+| `actor_user_id` | uuid, null | No foreign key, so history is never altered; null for system/CLI actions |
+| `council_id` | uuid FK → councils, null | Null for platform-level events |
+| `action` | varchar(64) | e.g. `council.created`, `membership.granted`, `membership.role_changed`, `membership.revoked`, `user.password_changed`, `platform_admin.granted` |
+| `target_type`, `target_id` | varchar(64), uuid | |
+| `details` | jsonb | Action-specific facts; never secrets |
+| `request_id` | varchar(64) | Correlates with request logs |
+
+Indexes: `(council_id, occurred_at)`, `(actor_user_id)`.
+
+## Database roles and Row-Level Security
+
+| Role | Used by | Privileges |
+|---|---|---|
+| Schema owner (`POSTGRES_USER`) | Alembic only | Owns all tables and the RLS helper functions |
+| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`: SELECT/INSERT only (append-only) |
+
+The API sets the transaction-local setting `app.user_id` for every transaction of an authenticated request (`app/core/database.py`). Policies:
+
+- `council_memberships` — read: own rows, rows of councils where the user is an active member, or platform admin. Insert/update: councils where the user is an active `council_admin`, or platform admin. No delete.
+- `audit_logs` — read: platform admin, or `council_admin` of the entry's council. Insert: only as yourself (`actor_user_id` is null or the current user).
+
+Helper functions `app_current_user_id()`, `app_is_platform_admin()`, `app_member_council_ids()` and `app_admin_council_ids()` are `SECURITY DEFINER` (owner) so policies on `council_memberships` do not recurse into themselves.
+
+Because PostgreSQL applies *read* policies to `INSERT … RETURNING`, rows that an actor may write but not read (audit entries) must not need `RETURNING`: `audit_logs.occurred_at` is therefore set by the application, not by a server default.
+
+`users`, `user_sessions` and `councils` have no RLS: sign-in must look up users before an identity exists, and the council directory is public. Access to them is controlled in the service layer.
+
 Stale sessions (expired, revoked or idle for more than a day past the limit) are deleted hourly by the `identity.purge_stale_sessions` Celery task.
 
 ## Planned tables
 
 | Table | Milestone | Notes |
 |---|---|---|
-| `councils` | 1 | `slug citext unique`, `boundary geometry(MultiPolygon,4326)` |
-| `council_memberships` | 1 | `(user_id, council_id)` unique; `role` enum |
 | `departments` | 3 | `council_id`, unique `(council_id, name)` |
 | `issue_categories` | 2 | Platform-wide categories listed in `01-product-requirements.md` |
 | `issues` | 2 | `council_id`, `reporter_id`, `category_id`, `status`, `visibility`, `location geography(Point,4326)` |
@@ -61,7 +118,6 @@ Stale sessions (expired, revoked or idle for more than a day past the limit) are
 | `issue_assignments` | 3 | Department / officer assignment history |
 | `issue_updates`, `issue_comments` | 3 | Internal vs. public visibility flag |
 | `notifications` | 5 | Per-user notification queue |
-| `audit_logs` | 1 | Append-only security and admin actions |
 | `resolution_feedback` | 5 | Resident confirmation that a fix worked |
 
 Detailed column definitions are added here as each migration lands, so this document always matches `alembic/versions/`.

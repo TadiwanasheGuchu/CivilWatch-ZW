@@ -10,10 +10,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-civicwatch}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-civicwatch}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      # Creates the unprivileged API role on first start of an empty volume.
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -35,7 +38,10 @@ services:
     command: ["alembic", "upgrade", "head"]
     environment: &backend-env
       CIVICWATCH_ENVIRONMENT: development
-      CIVICWATCH_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-civicwatch}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-civicwatch}
+      # The API runs as civicwatch_app (subject to Row-Level Security);
+      # only Alembic uses the owner account.
+      CIVICWATCH_DATABASE_URL: postgresql+psycopg://civicwatch_app:${APP_DB_PASSWORD}@db:5432/${POSTGRES_DB:-civicwatch}
+      CIVICWATCH_MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-civicwatch}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-civicwatch}
       CIVICWATCH_REDIS_URL: redis://redis:6379/0
       CIVICWATCH_CORS_ORIGINS: http://localhost:3000
       # Local HTTP only. Staging/production refuse to start with insecure cookies.

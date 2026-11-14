@@ -20,6 +20,14 @@ Residents of Zimbabwean towns and cities have no reliable, transparent channel t
 
 A person may hold roles in several councils; every permission is scoped to a council membership.
 
+### Role decisions (stage 1.3)
+
+- **Residents and public visitors are not council roles.** Any signed-in account is a resident; anyone signed out is a public visitor. Council roles (`council_admin`, `department_manager`, `verification_officer`, `maintenance_officer`) are held through `council_memberships`.
+- **One active role per person per council.** Someone who needs different duties in two councils holds a separate membership in each. *Open question:* if one person must hold two roles in the *same* council (e.g. verifier and maintenance), this becomes a set of roles per membership.
+- **Platform super admins** can create councils and manage council staff (to appoint each council's first administrator), but have **no access to a council's operational data** unless they also hold a membership. They are appointed only from the server command line, never through the API.
+- **Staff are added from existing accounts:** a council administrator adds a person by the email of their CivicWatch account. Email invitations for people without an account need an email provider (open question below).
+- **A council always keeps at least one administrator.**
+
 ## Core journeys
 
 1. **Report** — category → description → photos → location → visibility → review & submit. Drafts survive network loss.

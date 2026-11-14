@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     database_url: PostgresDsn = Field(
         default=PostgresDsn("postgresql+psycopg://civicwatch:civicwatch@localhost:5432/civicwatch")
     )
+    # Schema-owner connection used only by Alembic. The API's database_url
+    # must use the unprivileged `civicwatch_app` role so RLS applies to it.
+    migration_database_url: PostgresDsn | None = None
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=100)
 
@@ -68,6 +71,10 @@ class Settings(BaseSettings):
         if self.session_absolute_timeout_minutes < self.session_idle_timeout_minutes:
             raise ValueError("absolute session timeout must not be shorter than idle timeout")
         return self
+
+    @property
+    def effective_migration_database_url(self) -> str:
+        return str(self.migration_database_url or self.database_url)
 
     @property
     def is_production(self) -> bool:

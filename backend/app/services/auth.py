@@ -23,6 +23,7 @@ from app.core.security import (
 )
 from app.models.identity import User, UserSession
 from app.repositories.identity import SessionRepository, UserRepository
+from app.services.audit import record_audit
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,13 @@ class AuthService:
         user.password_changed_at = now
         # Anyone else holding a session for this account is signed out.
         self.sessions.revoke_all_for_user(user.id, now=now, except_session_id=session.id)
+        record_audit(
+            self.db,
+            action="user.password_changed",
+            actor_user_id=user.id,
+            target_type="user",
+            target_id=user.id,
+        )
         self.db.commit()
         self.limiter.reset("password_change:user", str(user.id))
         logger.info("password changed", extra={"user_id": str(user.id)})

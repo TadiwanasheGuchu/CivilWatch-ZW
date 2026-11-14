@@ -14,7 +14,9 @@ concurrency:
 
 env:
   CIVICWATCH_ENVIRONMENT: test
-  CIVICWATCH_DATABASE_URL: postgresql+psycopg://civicwatch:civicwatch@localhost:5432/civicwatch_test
+  # The API and tests run as the unprivileged role so Row-Level Security applies.
+  CIVICWATCH_DATABASE_URL: postgresql+psycopg://civicwatch_app:civicwatch_app@localhost:5432/civicwatch_test
+  CIVICWATCH_MIGRATION_DATABASE_URL: postgresql+psycopg://civicwatch:civicwatch@localhost:5432/civicwatch_test
   CIVICWATCH_REDIS_URL: redis://localhost:6379/0
 
 jobs:
@@ -40,6 +42,10 @@ jobs:
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Create application database role
+        env:
+          PGPASSWORD: civicwatch
+        run: psql -h localhost -U civicwatch -d civicwatch_test -c "CREATE ROLE civicwatch_app LOGIN PASSWORD 'civicwatch_app'"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -90,6 +96,10 @@ jobs:
         ports: ["6379:6379"]
     steps:
       - uses: actions/checkout@v4
+      - name: Create application database role
+        env:
+          PGPASSWORD: civicwatch
+        run: psql -h localhost -U civicwatch -d civicwatch_test -c "CREATE ROLE civicwatch_app LOGIN PASSWORD 'civicwatch_app'"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

@@ -19,9 +19,25 @@ docker compose up --build
 | `worker` | — | Celery worker with embedded beat scheduler (hourly session purge) |
 | `migrate` | — | Runs `alembic upgrade head` before `api` and `worker` start |
 
+The database container creates `civicwatch_app` (password `APP_DB_PASSWORD` from `.env`) only when its volume is first initialised. **If you ran the stack before stage 1.3**, recreate the volume so the role exists (this deletes local data):
+
+```bash
+docker compose down -v
+```
+
+### First platform administrator
+
+Register an account through the API, then on the server:
+
+```bash
+docker compose exec api python -m app.cli grant-platform-admin you@example.com
+```
+
+`revoke-platform-admin` reverses it. Both are written to the audit log. There is intentionally no HTTP endpoint for this.
+
 ## Running without Docker
 
-Backend (Python 3.12+, PostgreSQL 16 with PostGIS, Redis):
+Backend (Python 3.12+, PostgreSQL 16 with PostGIS, Redis). Create a login role `civicwatch_app` with a password, set both database URLs (see Configuration), then:
 
 ```bash
 cd backend && python -m venv .venv && .venv/bin/pip install -e ".[dev]"
@@ -42,7 +58,8 @@ cd frontend && npm install && npm run dev
 | Variable | Default | Purpose |
 |---|---|---|
 | `CIVICWATCH_ENVIRONMENT` | `development` | `development`, `test`, `staging`, `production` |
-| `CIVICWATCH_DATABASE_URL` | local `civicwatch` DB | SQLAlchemy URL (`postgresql+psycopg://…`) |
+| `CIVICWATCH_DATABASE_URL` | local `civicwatch` DB | API connection; must use the unprivileged `civicwatch_app` role |
+| `CIVICWATCH_MIGRATION_DATABASE_URL` | falls back to `CIVICWATCH_DATABASE_URL` | Schema-owner connection used only by Alembic |
 | `CIVICWATCH_REDIS_URL` | `redis://localhost:6379/0` | Redis / Celery broker |
 | `CIVICWATCH_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed browser origins |
 | `CIVICWATCH_LOG_LEVEL` | `INFO` | Log level |
@@ -59,4 +76,4 @@ cd frontend && npm install && npm run dev
 
 ## Production
 
-Not yet defined (Milestone 6). Requirements already fixed: HTTPS only, secrets from a secret manager, private object storage, database role without superuser or table ownership for the app (needed for RLS), backups for PostgreSQL, uvicorn behind the proxy with `--proxy-headers --forwarded-allow-ips=<proxy IPs>` so rate limits see real client IPs, and a separate `celery beat` process.
+Not yet defined (Milestone 6). Requirements already fixed: HTTPS only, secrets from a secret manager, the API connected as `civicwatch_app` and migrations as a separate non-superuser owner role (extensions installed by a DBA), private object storage, database role without superuser or table ownership for the app (needed for RLS), backups for PostgreSQL, uvicorn behind the proxy with `--proxy-headers --forwarded-allow-ips=<proxy IPs>` so rate limits see real client IPs, and a separate `celery beat` process.

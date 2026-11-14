@@ -1,9 +1,14 @@
 """Shared test fixtures.
 
 Tests run against a real PostgreSQL + PostGIS database and Redis, never
-mocks of them. Point CIVICWATCH_DATABASE_URL / CIVICWATCH_REDIS_URL at
-disposable test services (docker compose and CI provide them): every test
-truncates application tables and flushes the Redis database.
+mocks of them. Configure disposable test services:
+
+- CIVICWATCH_DATABASE_URL: the unprivileged `civicwatch_app` role (as the API
+  uses in production, so Row-Level Security is exercised for real);
+- CIVICWATCH_MIGRATION_DATABASE_URL: the schema owner (migrations, cleanup);
+- CIVICWATCH_REDIS_URL.
+
+Every test truncates application tables and flushes the Redis database.
 """
 
 import os
@@ -14,7 +19,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session
 
 os.environ.setdefault("CIVICWATCH_ENVIRONMENT", "test")
@@ -23,6 +28,7 @@ from app.core.cache import get_redis  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
 from app.core.database import get_session_factory  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.models.councils import CouncilRole  # noqa: E402
 
 BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_PASSWORD = "correct horse battery"
@@ -37,12 +43,23 @@ def migrated_database() -> None:
     command.upgrade(config, "head")
 
 
+@pytest.fixture(scope="session")
+def owner_engine() -> Iterator[Engine]:
+    engine = create_engine(get_settings().effective_migration_database_url)
+    yield engine
+    engine.dispose()
+
+
 @pytest.fixture(autouse=True)
-def clean_state() -> Iterator[None]:
+def clean_state(owner_engine: Engine) -> Iterator[None]:
     yield
-    with get_session_factory()() as db:
-        db.execute(text("TRUNCATE users, user_sessions RESTART IDENTITY CASCADE"))
-        db.commit()
+    with owner_engine.begin() as connection:
+        connection.execute(
+            text(
+                "TRUNCATE audit_logs, council_memberships, councils, user_sessions, users "
+                "RESTART IDENTITY CASCADE"
+            )
+        )
     get_redis().flushdb()
 
 
@@ -91,3 +108,44 @@ def register(
 
 def csrf_headers(session_body: dict[str, Any]) -> dict[str, str]:
     return {"X-CSRF-Token": session_body["csrf_token"]}
+
+
+def sign_in(client: TestClient, email: str, password: str = DEFAULT_PASSWORD) -> dict[str, Any]:
+    response = client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def make_platform_admin(client: TestClient, email: str) -> dict[str, Any]:
+    """Register a user, grant platform admin through the operator CLI, sign in."""
+    from app.cli import set_platform_admin
+
+    register(client, email=email, full_name="Platform Admin")
+    set_platform_admin(email, grant=True)
+    return sign_in(client, email)
+
+
+def create_council(
+    client: TestClient, admin_session: dict[str, Any], slug: str, name: str | None = None
+) -> dict[str, Any]:
+    response = client.post(
+        "/api/v1/councils",
+        json={"slug": slug, "name": name or slug.title()},
+        headers=csrf_headers(admin_session),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def add_member(
+    client: TestClient,
+    session_body: dict[str, Any],
+    council_id: str,
+    email: str,
+    role: CouncilRole | str,
+) -> Any:
+    return client.post(
+        f"/api/v1/councils/{council_id}/members",
+        json={"email": email, "role": str(role)},
+        headers=csrf_headers(session_body),
+    )

@@ -2,9 +2,11 @@
 
 from fastapi import APIRouter, Response, status
 
-from app.api.deps import AuthServiceDep, CurrentSession, CurrentUser
+from app.api.deps import AuthServiceDep, CurrentSession, CurrentUser, DbDep
 from app.schemas.auth import ChangePasswordRequest
+from app.schemas.councils import CouncilSummary, MembershipRead
 from app.schemas.users import UpdateProfileRequest, UserRead
+from app.services.councils import CouncilService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -45,3 +47,21 @@ def change_password(
         new_password=payload.new_password.get_secret_value(),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/me/memberships",
+    response_model=list[MembershipRead],
+    summary="Councils where you are staff (your workspaces)",
+    responses={401: _ERRORS[401]},
+)
+def my_memberships(user: CurrentUser, db: DbDep) -> list[MembershipRead]:
+    return [
+        MembershipRead(
+            id=m.id,
+            council=CouncilSummary.model_validate(m.council),
+            role=m.role,
+            created_at=m.created_at,
+        )
+        for m in CouncilService(db).list_my_memberships(user)
+    ]

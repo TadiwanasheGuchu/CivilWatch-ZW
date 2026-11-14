@@ -25,7 +25,7 @@ A **multi-tenant modular monolith**: one FastAPI backend, one Next.js frontend, 
 | `schemas/` | Pydantic request/response schemas — never return ORM objects |
 | `services/` | Business logic and transactions |
 | `repositories/` | Query helpers where they improve organisation |
-| `permissions/` | RBAC and tenant-scope checks (Milestone 1, stage 2) |
+| `permissions/` | Role → permission mapping (`rbac.py`) and council access resolution (`council_access.py`) |
 | `modules/` | Domain modules as they grow (identity, councils, issues, …) |
 | `workers/` | Celery app and tasks |
 
@@ -52,5 +52,6 @@ Server components by default; client components only where interactivity or TanS
 | Settings via environment, prefix `CIVICWATCH_` | Adopted |
 | Structured JSON logs to stdout with `request_id` | Adopted |
 | Server-side session authentication with synchronizer CSRF tokens | Approved and implemented (stage 1.2), see `06-security-and-privacy.md` |
-| Tenant isolation via membership-derived scope + PostgreSQL RLS | Approved; implementation in stage 1.3 |
+| Tenant isolation via membership-derived scope + PostgreSQL RLS | Implemented (stage 1.3) |
+| Two database roles: schema owner for migrations, unprivileged `civicwatch_app` for the API | Adopted (stage 1.3) — required for RLS to apply; see `06-security-and-privacy.md` |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

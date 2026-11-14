@@ -10,7 +10,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", str(get_settings().database_url))
+config.set_main_option(
+    "sqlalchemy.url", get_settings().effective_migration_database_url.replace("%", "%%")
+)
 target_metadata = Base.metadata
 
 # PostGIS ships its own tables (spatial_ref_sys, tiger/topology schemas);
