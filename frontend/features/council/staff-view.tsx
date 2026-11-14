@@ -11,6 +11,7 @@ import { AddStaffForm } from "./add-staff-form";
 import { PAGE_SIZE } from "./api";
 import { CouncilShell } from "./council-shell";
 import { useMembers } from "./hooks";
+import { useDepartments } from "./operations/hooks";
 import { StaffMemberRow } from "./staff-member-row";
 
 export function StaffView({ councilId }: { councilId: string }) {
@@ -54,6 +55,7 @@ function StaffList({
 }) {
   const [page, setPage] = useState(1);
   const { data, isPending, isError, error, refetch } = useMembers(councilId, page, true);
+  const departments = useDepartments(councilId, canManage);
 
   return (
     <Panel title="Staff" description={data ? `${data.total} ${data.total === 1 ? "person" : "people"}` : undefined}>
@@ -68,12 +70,13 @@ function StaffList({
           <ul className="-mx-4 divide-y divide-line border-t border-line sm:-mx-5">
             {data.items.map((member) => (
               <StaffMemberRow
-                key={`${member.membership_id}-${member.role}`}
+                key={`${member.membership_id}-${member.role}-${member.department?.id ?? ""}`}
                 councilId={councilId}
                 member={member}
                 isSelf={member.user_id === currentUserId}
                 canManage={canManage}
                 csrfToken={csrfToken}
+                departments={departments.data}
               />
             ))}
           </ul>

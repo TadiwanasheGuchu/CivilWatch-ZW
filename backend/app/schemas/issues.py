@@ -130,8 +130,11 @@ class OwnStatusChange(StatusChange):
 class OwnIssueDetail(OwnIssue):
     history: list[OwnStatusChange]
     photos: list[PhotoRead]
+    repair_photos: list[PhotoRead] = []
 
 
 class PublicIssueDetail(PublicIssue):
     history: list[StatusChange]
     photos: list[PhotoRead]
+    # Repair evidence from the council, shown with the report.
+    repair_photos: list[PhotoRead] = []

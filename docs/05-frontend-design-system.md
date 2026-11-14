@@ -76,6 +76,12 @@ Six steps, one screen each: category → description → photos → location →
 
 Photos: "Take a photo" (opens the camera where supported) and "Choose from gallery", previews with remove buttons, up to five. Location: "Use my current location" first (most reliable on phones), the map second; the pin's coordinates are always shown as text. If the device cannot run the map, the step says so and location sharing still works; if map images fail to load, the map stays usable with a short note.
 
+### Council workspace
+
+Tabs (scrolling sideways on narrow phones): **Overview** (live counts by stage; each tile opens the filtered queue), **Reports** (queue with search, stage, problem, department and order filters kept in the URL), **My work** (a phone-first card list of assigned jobs, oldest first, each with large Directions and Open buttons), **Departments**, **Staff** and **Audit log**. A tab appears only when the person's permissions allow it.
+
+The **review page** puts the "Next step" and assignment panels right after the report summary on phones, and in a sticky sidebar on desktop. It offers exactly the actions the API returns in `available_transitions`; choosing one opens a short confirmation with a "Message to the reporter" box (marked required when it is) and, for duplicates, the original's reference. Staff notes are labelled as staff-only. Repair photos open the camera directly.
+
 ### Maps
 
 Raster tiles (OpenStreetMap by default) with attribution, no rotation or tilt, zoom buttons, and cooperative gestures on read-only maps so page scrolling is not hijacked. The map library is only downloaded when a map is shown.

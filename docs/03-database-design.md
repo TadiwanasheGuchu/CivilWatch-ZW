@@ -21,6 +21,7 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `0004` | Create `issue_categories` (seeded with the eight categories), `issues`, `issue_status_history`; grants and RLS policies |
 | `0005` | Create `issue_media`; grants and RLS policies |
 | `0006` | Let reporters delete their photos before review |
+| `0008` | `issue_media.kind` (`report`/`repair`); repair-photo insert policy for staff; reporter photo policies limited to report photos |
 | `0007` | Council operations: `departments`, `council_memberships.department_id`, `issue_assignments`, `issue_updates`, `issues.duplicate_of_issue_id`, `issue_status_history.note`; status updates by staff and reporters; RLS |
 
 ### `users`
@@ -126,6 +127,7 @@ Append-only: one row per status change. Columns: `id`, `issue_id` (FK, restrict)
 | `uploaded_by_user_id` | uuid FK → users (set null), null | |
 | `display_key`, `thumbnail_key` | varchar(255), unique | Object keys `issues/{issue_id}/{media_id}/display.jpg` and `…/thumbnail.jpg`; never URLs |
 | `content_type` | varchar(32) | Check: `image/jpeg` (every upload is re-encoded) |
+| `kind` | varchar(16), default `report` | Check: `report` (from the reporter) or `repair` (evidence from staff doing the work) |
 | `width`, `height`, `byte_size` | integer | Of the display image; check: positive |
 | `created_at` | timestamptz | Set by the application |
 
@@ -170,7 +172,7 @@ The API sets the transaction-local setting `app.user_id` for every transaction o
 - `council_memberships` — read: own rows, rows of councils where the user is an active member, or platform admin. Insert/update: councils where the user is an active `council_admin`, or platform admin. No delete.
 - `audit_logs` — read: platform admin, or `council_admin` of the entry's council. Insert: only as yourself (`actor_user_id` is null or the current user).
 - `issues` — read: the reporter, active staff of the report's council, or anyone (including anonymous requests) when the report is `PUBLIC` and published (`VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`). Insert: only as yourself and only with status `SUBMITTED`. Platform admins get no special access.
-- `issue_media` — read: exactly when the report is readable. Insert and delete: only for your own report, and only while it is `SUBMITTED` or `NEEDS_INFORMATION`.
+- `issue_media` — read: exactly when the report is readable. Reporters insert and delete only `report` photos of their own report while it is `SUBMITTED` or `NEEDS_INFORMATION`. Council staff insert `repair` photos for their council's reports while `IN_PROGRESS` or `RESOLVED` (which staff exactly is decided by the workflow rules). Nobody else may insert, and repair photos cannot be deleted through the API.
 - `issues` (update) — staff of the report's council; or the reporter, only from `NEEDS_INFORMATION` and only to `UNDER_REVIEW`. Which staff may make which change is decided by the workflow rules in the API.
 - `departments` — read: council staff. Insert/update: the council's administrators.
 - `issue_assignments`, `issue_updates` — read: council staff only (never residents or the public). Insert: council staff, as themselves.

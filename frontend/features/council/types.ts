@@ -5,7 +5,17 @@ export type CouncilRole =
   | "verification_officer"
   | "maintenance_officer";
 
-export type Permission = "workspace.view" | "members.view" | "members.manage" | "audit.view";
+export type Permission =
+  | "workspace.view"
+  | "members.view"
+  | "members.manage"
+  | "audit.view"
+  | "departments.manage"
+  | "issues.view"
+  | "issues.review"
+  | "issues.assign"
+  | "issues.work"
+  | "issues.close";
 
 export interface CouncilSummary {
   id: string;
@@ -40,6 +50,7 @@ export interface Member {
   full_name: string;
   email: string;
   role: CouncilRole;
+  department: { id: string; name: string } | null;
   granted_at: string;
 }
 

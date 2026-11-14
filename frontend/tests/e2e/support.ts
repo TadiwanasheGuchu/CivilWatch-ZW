@@ -117,3 +117,41 @@ export async function submitReportViaApi(
   expect(response.status(), await response.text()).toBe(201);
   return response.json();
 }
+
+export async function createDepartmentViaApi(admin: ApiUser, councilId: string, name: string): Promise<{ id: string }> {
+  const response = await admin.api.post(`councils/${councilId}/departments`, {
+    data: { name },
+    headers: { "X-CSRF-Token": admin.csrf },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  return response.json();
+}
+
+export async function setMemberDepartment(admin: ApiUser, councilId: string, userId: string, departmentId: string) {
+  const members = await (await admin.api.get(`councils/${councilId}/members?page_size=100`)).json();
+  const member = members.items.find((m: { user_id: string }) => m.user_id === userId);
+  const response = await admin.api.patch(`councils/${councilId}/members/${member.membership_id}`, {
+    data: { department_id: departmentId },
+    headers: { "X-CSRF-Token": admin.csrf },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+}
+
+/** Sign in as another person in a fresh browser context (separate cookies). */
+export async function pageFor(browser: import("@playwright/test").Browser, email: string, next: string) {
+  const context = await browser.newContext({ viewport: browserViewport });
+  extraContexts.push(context);
+  const page = await context.newPage();
+  await signInViaUi(page, email, next);
+  return page;
+}
+
+let browserViewport: { width: number; height: number } | null = null;
+const extraContexts: import("@playwright/test").BrowserContext[] = [];
+
+export async function closeExtraContexts() {
+  await Promise.all(extraContexts.splice(0).map((context) => context.close()));
+}
+export function useViewportFor(viewport: { width: number; height: number } | null) {
+  browserViewport = viewport;
+}

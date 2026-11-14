@@ -17,7 +17,7 @@ import { ROLE_LABELS } from "./labels";
 import type { Workspace } from "./types";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
-type Tab = "staff" | "audit";
+type Tab = "overview" | "reports" | "work" | "departments" | "staff" | "audit";
 
 interface CouncilShellProps {
   councilId: string;
@@ -49,9 +49,15 @@ function CouncilWorkspace({ councilId, tab, children, session }: CouncilShellPro
     return <LoadError message={errorMessage(error)} onRetry={() => void refetch()} />;
   }
 
+  const can = (permission: Workspace["permissions"][number]) => workspace.permissions.includes(permission);
+  const root = `/council/${councilId}`;
   const tabs: Array<{ id: Tab; label: string; href: string; visible: boolean }> = [
-    { id: "staff", label: "Staff", href: `/council/${councilId}`, visible: workspace.permissions.includes("members.view") },
-    { id: "audit", label: "Audit log", href: `/council/${councilId}/audit`, visible: workspace.permissions.includes("audit.view") },
+    { id: "overview", label: "Overview", href: root, visible: can("issues.view") },
+    { id: "reports", label: "Reports", href: `${root}/reports`, visible: can("issues.view") },
+    { id: "work", label: "My work", href: `${root}/work`, visible: can("issues.work") },
+    { id: "departments", label: "Departments", href: `${root}/departments`, visible: can("issues.view") },
+    { id: "staff", label: "Staff", href: `${root}/staff`, visible: can("members.view") },
+    { id: "audit", label: "Audit log", href: `${root}/audit`, visible: can("audit.view") },
   ];
 
   return (
@@ -79,7 +85,8 @@ function CouncilWorkspace({ councilId, tab, children, session }: CouncilShellPro
         </p>
       ) : null}
 
-      <nav aria-label="Council sections" className="flex gap-1 border-b border-line">
+      {/* Scrolls sideways on narrow phones rather than widening the page. */}
+      <nav aria-label="Council sections" className="-mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
         {tabs
           .filter((item) => item.visible)
           .map((item) => (
@@ -88,7 +95,7 @@ function CouncilWorkspace({ councilId, tab, children, session }: CouncilShellPro
               href={item.href}
               aria-current={item.id === tab ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-medium",
+                "inline-flex min-h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap",
                 item.id === tab ? "border-teal text-navy" : "border-transparent text-slate hover:text-navy",
               )}
             >

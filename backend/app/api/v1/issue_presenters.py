@@ -32,7 +32,7 @@ class IssuePresenter:
         )
 
     def _summary_fields(self, issue: Issue) -> dict:
-        photos = issue.photos
+        photos = issue.report_photos
         return {
             "photo_count": len(photos),
             "cover_thumbnail_url": (
@@ -50,12 +50,14 @@ class IssuePresenter:
         return OwnIssueDetail(
             **self.own(issue).model_dump(),
             history=[OwnStatusChange.model_validate(h) for h in history],
-            photos=[self.photo(m) for m in issue.photos],
+            photos=[self.photo(m) for m in issue.report_photos],
+            repair_photos=[self.photo(m) for m in issue.repair_photos],
         )
 
     def public_detail(self, issue: Issue, history: list[IssueStatusHistory]) -> PublicIssueDetail:
         return PublicIssueDetail(
             **self.public(issue).model_dump(),
             history=[StatusChange.model_validate(h) for h in history],
-            photos=[self.photo(m) for m in issue.photos],
+            photos=[self.photo(m) for m in issue.report_photos],
+            repair_photos=[self.photo(m) for m in issue.repair_photos],
         )

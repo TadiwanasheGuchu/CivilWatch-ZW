@@ -62,4 +62,6 @@ Server components by default; client components only where interactivity or TanS
 | MapLibre GL JS with raster tiles, loaded only when a map is shown; its worker served from `public/maplibre/` | Adopted (stage 2.3) |
 | Status workflow as one declarative table (`services/workflow.py`): permission, scope (council, department, assignee) and note rule per transition; the API offers each caller exactly the transitions they may make | Adopted (stage 3.1) |
 | Status changes lock the report row (`SELECT … FOR UPDATE`) so concurrent changes cannot both succeed | Adopted (stage 3.1) |
+| Photos carry a `kind` (`report` or `repair`) in one `issue_media` table, with separate limits and permissions | Adopted (stage 3.2) |
+| Council screens under `/council/[id]/…` (overview, reports, review, my work, departments, staff, audit), in `features/council/operations/` | Adopted (stage 3.2) |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

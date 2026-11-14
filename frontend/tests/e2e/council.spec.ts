@@ -20,6 +20,9 @@ test.describe("council workspace", () => {
     await signInViaUi(page, admin.email);
     await page.getByRole("link", { name: /E2E Harare City Council/ }).click();
     await expect(page).toHaveURL(new RegExp(`/council/${council.id}$`));
+    // The workspace opens on the overview; staff management has its own tab.
+    await page.getByRole("navigation", { name: "Council sections" }).getByRole("link", { name: "Staff" }).click();
+    await expect(page).toHaveURL(new RegExp(`/council/${council.id}/staff$`));
     await expect(page.getByRole("heading", { name: "E2E Harare City Council" })).toBeVisible();
     await expect(page.getByText("Council administrator").first()).toBeVisible();
     await expectNoHorizontalScroll(page);
@@ -34,14 +37,14 @@ test.describe("council workspace", () => {
 
     // Change their role.
     await row.getByLabel("Role for Rumbi Officer").selectOption("maintenance_officer");
-    await row.getByRole("button", { name: "Save role" }).click();
-    await expect(row.getByRole("button", { name: "Save role" })).toBeHidden();
+    await row.getByRole("button", { name: "Save changes" }).click();
+    await expect(row.getByRole("button", { name: "Save changes" })).toBeHidden();
     await expect(row.getByLabel("Role for Rumbi Officer")).toHaveValue("maintenance_officer");
 
     // The last administrator cannot demote themselves.
     const selfRow = page.getByRole("listitem").filter({ hasText: "(you)" });
     await selfRow.getByLabel("Role for Farai Admin").selectOption("maintenance_officer");
-    await selfRow.getByRole("button", { name: "Save role" }).click();
+    await selfRow.getByRole("button", { name: "Save changes" }).click();
     await expect(selfRow.getByRole("alert")).toContainText("keep at least one administrator");
     await selfRow.getByRole("button", { name: "Cancel" }).click();
 
@@ -69,7 +72,7 @@ test.describe("council workspace", () => {
     const officer = await registerViaApi("Tafadzwa Officer");
     await addMemberViaApi(platform, council.id, officer.email, "verification_officer");
 
-    await signInViaUi(page, officer.email, `/council/${council.id}`);
+    await signInViaUi(page, officer.email, `/council/${council.id}/staff`);
     await expect(page.getByRole("region", { name: "Staff" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Add staff member" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Remove from staff" })).toHaveCount(0);

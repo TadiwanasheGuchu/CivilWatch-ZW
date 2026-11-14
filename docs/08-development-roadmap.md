@@ -18,7 +18,9 @@ Acceptance: users can authenticate and access authorised council workspaces; cro
 | Stage | Scope | Status |
 |---|---|---|
 | 3.1 | Workflow rules and transitions, departments, assignment, staff-only notes, council queue and summary, reporter answers to information requests | **Done** (backend) |
-| 3.2 | Council screens: dashboard with live counts, queue with filters, report review and actions, assignment, departments, staff departments; maintenance officer "My work" on phones with repair evidence photos | Next |
+| 3.2 | Council screens: dashboard with live counts, queue with filters, report review and actions, assignment, departments, staff departments; maintenance officer "My work" on phones with repair evidence photos | **Done** |
+
+Acceptance: council staff can manage reports. **Met** — Milestone 3 is complete. Next: Milestone 4 (geographic intelligence).
 
 ## Later milestones
 

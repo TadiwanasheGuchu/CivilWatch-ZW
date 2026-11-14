@@ -15,6 +15,7 @@ from app.models.issues import (
     IssueStatusHistory,
     IssueUpdate,
     IssueVisibility,
+    MediaKind,
 )
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "IssueStatusHistory",
     "IssueUpdate",
     "IssueVisibility",
+    "MediaKind",
     "User",
     "UserSession",
 ]

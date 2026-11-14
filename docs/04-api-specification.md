@@ -218,6 +218,11 @@ CSRF. Body `{ "to_status", "note"?, "duplicate_of_reference"? }`. Returns the up
 ### `POST /issues/{issue_id}/updates`
 Any staff, CSRF. Body `{ "body" }` (1–2000). A staff-only note; returns `201` with the detail.
 
+### `POST /issues/{issue_id}/photos`
+Repair evidence (CSRF; `multipart/form-data`, field `file`). Allowed for the assignee, their department's manager, or an administrator while the report is `IN_PROGRESS` or `RESOLVED`; same validation and sanitising as report photos, up to five repair photos per report. `201 { id, url, thumbnail_url, width, height }`. `403` for other staff, `409` at other stages or over the limit.
+
+`StaffIssueDetail` also includes `repair_photos[]` and `can_add_repair_photos`. Resident and public report details include `repair_photos[]`; list `photo_count` and `cover_thumbnail_url` refer to report photos only. A reporter's `DELETE /issues/{id}/photos/{photo_id}` only ever matches their own report photos.
+
 ### `GET /departments` · `POST /departments` · `PATCH /departments/{department_id}`
 Any staff may list; administrators create (`{ name, description? }`) and update (`{ name?, description?, is_active? }`). Names are unique per council, ignoring case (`409`). Changes are audited.
 

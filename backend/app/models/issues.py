@@ -143,6 +143,14 @@ class Issue(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     def is_published(self) -> bool:
         return self.visibility == IssueVisibility.PUBLIC and self.status in PUBLISHED_STATUSES
 
+    @property
+    def report_photos(self) -> list["IssueMedia"]:
+        return [m for m in self.photos if m.kind == MediaKind.REPORT]
+
+    @property
+    def repair_photos(self) -> list["IssueMedia"]:
+        return [m for m in self.photos if m.kind == MediaKind.REPAIR]
+
 
 class IssueStatusHistory(UUIDPrimaryKeyMixin, Base):
     """One row per status change, never updated or deleted."""
@@ -175,6 +183,11 @@ class IssueStatusHistory(UUIDPrimaryKeyMixin, Base):
     )
 
 
+class MediaKind(StrEnum):
+    REPORT = "report"  # added by the reporter
+    REPAIR = "repair"  # repair evidence added by council staff doing the work
+
+
 class IssueMedia(UUIDPrimaryKeyMixin, Base):
     """A sanitised photo stored privately in object storage.
 
@@ -192,6 +205,9 @@ class IssueMedia(UUIDPrimaryKeyMixin, Base):
     display_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     thumbnail_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     content_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    kind: Mapped[MediaKind] = mapped_column(
+        String(16), nullable=False, default=MediaKind.REPORT, server_default="report"
+    )
     width: Mapped[int] = mapped_column(Integer, nullable=False)
     height: Mapped[int] = mapped_column(Integer, nullable=False)
     byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -204,6 +220,7 @@ class IssueMedia(UUIDPrimaryKeyMixin, Base):
 
     __table_args__ = (
         CheckConstraint("content_type = 'image/jpeg'", name="content_type_valid"),
+        CheckConstraint("kind IN ('report', 'repair')", name="kind_valid"),
         CheckConstraint("width > 0 AND height > 0 AND byte_size > 0", name="dimensions_positive"),
         Index("ix_issue_media_issue_id_created_at", "issue_id", "created_at"),
     )

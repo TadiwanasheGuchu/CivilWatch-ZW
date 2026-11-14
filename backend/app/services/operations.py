@@ -50,6 +50,7 @@ class StaffIssueView:
     updates: list[tuple[IssueUpdate, str | None]]
     transitions: list[tuple[IssueStatus, workflow.Transition]]
     can_assign: bool
+    can_add_repair_photos: bool
 
 
 class CouncilIssueService:
@@ -95,6 +96,7 @@ class CouncilIssueService:
             updates=self.repo.updates_with_names(issue.id),
             transitions=workflow.available_transitions(access, issue.status, current),
             can_assign=self._may_assign_now(access, issue.status, current),
+            can_add_repair_photos=workflow.can_add_repair_photos(self.db, access, issue),
         )
 
     # --- Changing status -----------------------------------------------------------------------

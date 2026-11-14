@@ -34,6 +34,8 @@ export interface StatusChange {
   from_status: IssueStatus | null;
   to_status: IssueStatus;
   created_at: string;
+  /** The council's message to the reporter, or the reporter's answer. Only sent to the reporter. */
+  note?: string | null;
 }
 
 export interface PublicIssue {
@@ -61,6 +63,8 @@ export interface OwnIssue extends PublicIssue {
 export interface IssueDetail extends PublicIssue {
   history: StatusChange[];
   photos: Photo[];
+  /** Repair evidence added by the council. */
+  repair_photos: Photo[];
   /** Present only when the viewer is the reporter. */
   visibility?: Visibility;
   is_published?: boolean;

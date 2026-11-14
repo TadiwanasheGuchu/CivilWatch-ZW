@@ -48,6 +48,13 @@ export function fetchPublishedReports(filters: ExploreFilters, page: number, sig
   return apiGet<Page<PublicIssue>>(`/issues?${params.toString()}`, { signal });
 }
 
+export function provideInformation(issueId: string, note: string, csrfToken: string) {
+  return apiSend<IssueDetail>("POST", `/issues/${encodeURIComponent(issueId)}/information`, {
+    body: { note },
+    csrfToken,
+  });
+}
+
 export function removePhoto(issueId: string, photoId: string, csrfToken: string) {
   return apiSend(
     "DELETE",

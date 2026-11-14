@@ -8,11 +8,19 @@ has its own endpoint because it also chooses a department.
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+from sqlalchemy import select
 
 from app.models.councils import CouncilRole
 from app.models.issues import IssueAssignment, IssueStatus
 from app.permissions.council_access import CouncilAccess
 from app.permissions.rbac import Permission
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.models.issues import Issue
 
 S = IssueStatus
 
@@ -66,6 +74,8 @@ TRANSITIONS: dict[tuple[IssueStatus, IssueStatus], Transition] = {
 }
 
 ASSIGNABLE_STATUSES = frozenset({S.VERIFIED, S.ASSIGNED, S.IN_PROGRESS})
+# Repair evidence is added while the work is under way or just finished.
+REPAIR_STATUSES = frozenset({S.IN_PROGRESS, S.RESOLVED})
 
 
 def in_scope(access: CouncilAccess, scope: Scope, assignment: IssueAssignment | None) -> bool:
@@ -102,3 +112,15 @@ def available_transitions(
 
 def can_assign(access: CouncilAccess, status: IssueStatus) -> bool:
     return Permission.ISSUES_ASSIGN in access.permissions and status in ASSIGNABLE_STATUSES
+
+
+def can_add_repair_photos(db: "Session", access: CouncilAccess, issue: "Issue") -> bool:
+    """The staff doing the work: assignee, their department's manager, or an admin."""
+    if Permission.ISSUES_WORK not in access.permissions or issue.status not in REPAIR_STATUSES:
+        return False
+    assignment = db.scalar(
+        select(IssueAssignment).where(
+            IssueAssignment.issue_id == issue.id, IssueAssignment.ended_at.is_(None)
+        )
+    )
+    return in_scope(access, Scope.ASSIGNEE, assignment)

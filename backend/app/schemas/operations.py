@@ -126,10 +126,12 @@ class StaffIssueDetail(StaffIssueSummary):
     reporter_name: str
     duplicate_of: IssueRef | None
     photos: list[PhotoRead]
+    repair_photos: list[PhotoRead]
     history: list[StaffStatusChange]
     updates: list[InternalUpdateRead]
     available_transitions: list[AvailableTransition]
     can_assign: bool
+    can_add_repair_photos: bool
 
 
 class TransitionRequest(BaseModel):

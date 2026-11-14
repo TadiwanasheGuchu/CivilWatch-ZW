@@ -13,6 +13,7 @@ import { ApiError, errorMessage } from "@/lib/api-client";
 
 import { useReport } from "./hooks";
 import { formatDateTime, STATUS_EXPLANATIONS, STATUS_LABELS } from "./labels";
+import { InformationAnswer } from "./information-answer";
 import { ReportPhotos } from "./report-photos";
 import { StatusBadge } from "./status-badge";
 
@@ -40,7 +41,9 @@ export function ReportDetailView({ id }: { id: string }) {
   }
 
   const isOwn = issue.visibility !== undefined;
-  const canEditPhotos = isOwn && issue.status === "SUBMITTED" && session ? session : null;
+  const awaitingInformation = isOwn && issue.status === "NEEDS_INFORMATION";
+  const canEditPhotos =
+    isOwn && (issue.status === "SUBMITTED" || awaitingInformation) && session ? session : null;
 
   return (
     <article className="space-y-6">
@@ -76,7 +79,28 @@ export function ReportDetailView({ id }: { id: string }) {
         <p className="mt-2 text-sm text-navy-soft">{STATUS_EXPLANATIONS[issue.status]}</p>
       </header>
 
+      {awaitingInformation && session ? <InformationAnswer issue={issue} csrfToken={session.csrf_token} /> : null}
+
       <ReportPhotos issue={issue} editableBy={canEditPhotos} />
+
+      {issue.repair_photos?.length ? (
+        <section aria-labelledby="repair-heading" className="space-y-3">
+          <h2 id="repair-heading" className="text-lg font-semibold">
+            Repair photos from the council
+          </h2>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {issue.repair_photos.map((photo, index) => (
+              <li key={photo.id} className="overflow-hidden rounded-md border border-line bg-mist">
+                <a href={photo.url} target="_blank" rel="noopener noreferrer" aria-label={`Open repair photo ${index + 1} full size`}>
+                  {/* Signed, expiring storage URL. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.thumbnail_url} alt={`Repair photo ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full object-cover" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-labelledby="details-heading" className="space-y-2">
         <h2 id="details-heading" className="text-lg font-semibold">
@@ -130,6 +154,9 @@ export function ReportDetailView({ id }: { id: string }) {
               <p className="text-sm text-slate tabular">
                 <time dateTime={change.created_at}>{formatDateTime(change.created_at)}</time>
               </p>
+              {change.note ? (
+                <p className="mt-1 rounded bg-mist px-2 py-1 text-sm whitespace-pre-line break-words">{change.note}</p>
+              ) : null}
             </li>
           ))}
         </ol>

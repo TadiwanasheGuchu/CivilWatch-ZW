@@ -12,6 +12,7 @@ const member: Member = {
   full_name: "Rumbi Officer",
   email: "rumbi@example.com",
   role: "verification_officer",
+  department: null,
   granted_at: "2026-11-14T08:00:00Z",
 };
 
@@ -62,7 +63,7 @@ describe("StaffMemberRow", () => {
       target: { value: "maintenance_officer" },
     });
     expect(fetchMock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save role" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("keep at least one administrator");
     expect(JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string)).toEqual({
       role: "maintenance_officer",

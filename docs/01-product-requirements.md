@@ -50,6 +50,7 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 - Managers and maintenance officers belong to **one department**, set on their membership.
 - **Messages to the reporter** (a question, a rejection reason, a resolution summary) are required where the reporter needs an explanation, and are shown to the reporter and staff. The **public timeline shows statuses only**. **Staff-only notes** are never shown outside the council.
 - Staff see the **reporter's name only**, never their email; questions go through "needs information". The reporter answers in the app, which returns the report to review; they may also add or remove photos while the council waits.
+- **Repair evidence**: the officer doing the work (or their manager, or an administrator) can add up to five repair photos while work is in progress or just after it is resolved. Repair photos are shown with the report to the reporter, and to the public when the report is public and verified.
 
 ## Report lifecycle
 

@@ -80,6 +80,9 @@ Three independent layers; each would stop a cross-council read on its own.
 - **Reporter privacy**: staff see the reporter's name, never their email or any other contact detail.
 - **Database backstops**: the API role may update only a report's status (and duplicate link), only as staff of that council, or as the reporter answering a request for information (and then only back to review). Departments are created only by the council's administrators; assignments and notes are invisible outside the council. Composite foreign keys make it impossible to attach another council's department to a membership or assignment.
 
+- **Repair evidence** goes through the same sanitising as report photos (EXIF and GPS removed, re-encoded). Only the staff doing the work can add it, and reporters can never remove it.
+- **Directions** links open Google Maps with the report's coordinates when an officer taps them; nothing is sent until they do.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

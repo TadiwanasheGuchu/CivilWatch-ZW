@@ -36,14 +36,15 @@ export function addMember(
   return apiSend<Member>("POST", `${base(councilId)}/members`, { body: input, csrfToken });
 }
 
-export function changeMemberRole(
+/** Change a staff member's role and/or department (`null` removes the department). */
+export function updateMember(
   councilId: string,
   membershipId: string,
-  role: CouncilRole,
+  body: { role?: CouncilRole; department_id?: string | null },
   csrfToken: string,
 ) {
   return apiSend<Member>("PATCH", `${base(councilId)}/members/${encodeURIComponent(membershipId)}`, {
-    body: { role },
+    body,
     csrfToken,
   });
 }

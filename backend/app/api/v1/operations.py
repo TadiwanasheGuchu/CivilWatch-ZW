@@ -7,15 +7,16 @@ own membership of that council (see app/permissions/council_access.py).
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 
-from app.api.deps import CouncilAccessDep, DbDep, SettingsDep
+from app.api.deps import CouncilAccessDep, DbDep, SettingsDep, get_rate_limiter
 from app.api.v1.issue_presenters import IssuePresenter
+from app.core.rate_limit import RateLimiter
 from app.core.storage import ObjectStorage, get_storage
 from app.models.issues import Issue, IssueStatus
 from app.permissions.council_access import CouncilAccess
 from app.repositories.operations import CurrentAssignment, QueueFilters
-from app.schemas.issues import CategorySummary
+from app.schemas.issues import CategorySummary, PhotoRead
 from app.schemas.operations import (
     AssignmentRead,
     AssignRequest,
@@ -38,6 +39,7 @@ from app.schemas.operations import (
 from app.schemas.pagination import Page, PageParams, page_params
 from app.services.departments import DepartmentService
 from app.services.operations import CouncilIssueService, StaffIssueView
+from app.services.photos import PhotoService
 
 router = APIRouter(prefix="/councils/{council_id}", tags=["council operations"])
 
@@ -109,7 +111,8 @@ def _detail(view: StaffIssueView, present: IssuePresenter) -> StaffIssueDetail:
             if view.duplicate_of
             else None
         ),
-        photos=[present.photo(m) for m in issue.photos],
+        photos=[present.photo(m) for m in issue.report_photos],
+        repair_photos=[present.photo(m) for m in issue.repair_photos],
         history=[
             StaffStatusChange(
                 from_status=h.from_status,
@@ -134,6 +137,7 @@ def _detail(view: StaffIssueView, present: IssuePresenter) -> StaffIssueDetail:
             for to_status, t in view.transitions
         ],
         can_assign=view.can_assign,
+        can_add_repair_photos=view.can_add_repair_photos,
     )
 
 
@@ -257,6 +261,46 @@ def add_internal_update(
 ) -> StaffIssueDetail:
     service.add_update(access, issue_id, payload.body)
     return _respond_detail(access, issue_id, service, present)
+
+
+_MULTIPART_OVERHEAD = 64 * 1024
+
+
+def get_photo_service(
+    db: DbDep,
+    settings: SettingsDep,
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+) -> PhotoService:
+    return PhotoService(db, settings, storage, limiter)
+
+
+@router.post(
+    "/issues/{issue_id}/photos",
+    response_model=PhotoRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a repair evidence photo (staff doing the work)",
+    responses={
+        409: {"description": "Work is not in progress or resolved, or photo limit reached"},
+        413: {"description": "Photo too large"},
+        422: {"description": "Not a readable photo"},
+        **_ERRORS,
+    },
+)
+def add_repair_photo(
+    issue_id: uuid.UUID,
+    request: Request,
+    access: CouncilAccessDep,
+    settings: SettingsDep,
+    photos: Annotated[PhotoService, Depends(get_photo_service)],
+    present: PresenterDep,
+    file: Annotated[UploadFile, File(description="The photo")],
+) -> PhotoRead:
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > settings.photo_max_upload_bytes + _MULTIPART_OVERHEAD:
+        raise photos.too_large()
+    data = file.file.read(settings.photo_max_upload_bytes + 1)
+    return present.photo(photos.add_repair_photo(access, issue_id, data))
 
 
 # --- Departments ----------------------------------------------------------------------------------
