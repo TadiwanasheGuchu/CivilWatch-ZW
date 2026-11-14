@@ -22,6 +22,13 @@ Acceptance: users can authenticate and access authorised council workspaces; cro
 
 Acceptance: council staff can manage reports. **Met** — Milestone 3 is complete. Next: Milestone 4 (geographic intelligence).
 
+## Milestone 4 — Geographic intelligence
+
+| Stage | Scope | Status |
+|---|---|---|
+| 4.1 | Boundaries (sample loader, upload, validation), locate council, database clustering, public and staff nearby search | **Done** (backend) |
+| 4.2 | Explore map (clusters, heatmap, boundaries, filters, preview card), "near me", automatic council choice and similar-report warning in the report form, staff queue map and duplicate suggestions, boundary upload screen | Next |
+
 ## Later milestones
 
 2. Reporting (in progress):

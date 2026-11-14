@@ -29,6 +29,11 @@ class CouncilRole(StrEnum):
     MAINTENANCE_OFFICER = "maintenance_officer"
 
 
+class BoundarySource(StrEnum):
+    SAMPLE = "sample"
+    OFFICIAL = "official"
+
+
 _ROLE_VALUES = ", ".join(f"'{role.value}'" for role in CouncilRole)
 
 
@@ -40,14 +45,24 @@ class Council(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
-    # Populated in Milestone 4 (council boundaries); used for report routing.
+    # The council's area; reports placed outside it are refused.
     boundary: Mapped[object | None] = mapped_column(
         Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False)
     )
+    # "sample" boundaries are illustrative only and are always labelled as such.
+    boundary_source: Mapped[BoundarySource | None] = mapped_column(String(16))
+    boundary_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
         CheckConstraint(r"slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'", name="slug_format"),
         CheckConstraint("char_length(name) > 0", name="name_not_empty"),
+        CheckConstraint(
+            "(boundary IS NULL) = (boundary_source IS NULL)", name="boundary_source_matches"
+        ),
+        CheckConstraint(
+            "boundary_source IS NULL OR boundary_source IN ('sample', 'official')",
+            name="boundary_source_valid",
+        ),
         Index("ix_councils_boundary", "boundary", postgresql_using="gist"),
     )
 

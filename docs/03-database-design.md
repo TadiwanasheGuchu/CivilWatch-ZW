@@ -21,6 +21,7 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `0004` | Create `issue_categories` (seeded with the eight categories), `issues`, `issue_status_history`; grants and RLS policies |
 | `0005` | Create `issue_media`; grants and RLS policies |
 | `0006` | Let reporters delete their photos before review |
+| `0009` | `councils.boundary_source` (`sample`/`official`) and `boundary_updated_at`, with checks that a boundary always has a source |
 | `0008` | `issue_media.kind` (`report`/`repair`); repair-photo insert policy for staff; reporter photo policies limited to report photos |
 | `0007` | Council operations: `departments`, `council_memberships.department_id`, `issue_assignments`, `issue_updates`, `issues.duplicate_of_issue_id`, `issue_status_history.note`; status updates by staff and reporters; RLS |
 
@@ -59,7 +60,9 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `slug` | citext, unique | Check: lowercase letters/digits with single hyphens |
 | `name` | varchar(160) | Check: not empty |
 | `is_active` | boolean | Inactive councils are hidden and inaccessible |
-| `boundary` | geometry(MultiPolygon, 4326), null | GiST index; populated in Milestone 4 |
+| `boundary` | geometry(MultiPolygon, 4326), null | GiST index; reports outside it are refused |
+| `boundary_source` | varchar(16), null | `sample` or `official`; set exactly when `boundary` is set |
+| `boundary_updated_at` | timestamptz, null | |
 | `created_at`, `updated_at` | timestamptz | |
 
 ### `council_memberships`

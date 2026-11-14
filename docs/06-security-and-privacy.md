@@ -83,6 +83,11 @@ Three independent layers; each would stop a cross-council read on its own.
 - **Repair evidence** goes through the same sanitising as report photos (EXIF and GPS removed, re-encoded). Only the staff doing the work can add it, and reporters can never remove it.
 - **Directions** links open Google Maps with the report's coordinates when an officer taps them; nothing is sent until they do.
 
+## Maps (stage 4.1)
+
+- Public map data and nearby search include only published public reports (explicit filter plus RLS); clusters carry no titles or reporter information, and single-report clusters only an ID and status. Staff map and nearby endpoints are limited to the caller's council.
+- Boundary changes are restricted to platform administrators, validated in PostGIS, and audited with area, vertex count and overlaps.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

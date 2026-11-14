@@ -37,6 +37,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+# Bundled SAMPLE council boundaries (python -m app.cli load-sample-boundaries).
+"app.data" = ["*.geojson"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"

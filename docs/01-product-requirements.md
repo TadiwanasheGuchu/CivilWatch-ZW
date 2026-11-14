@@ -58,13 +58,18 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 
 ## Reporting decisions (agreed before Milestone 2)
 
-- **Council routing:** the resident chooses the council from the directory. Once council boundaries exist (Milestone 4), the council is pre-selected from the map pin, and the API already refuses a location outside a council's boundary whenever that boundary is known. Every report must also fall inside the service area (Zimbabwe, configurable).
+- **Council routing:** the resident chooses the council from the directory; where boundaries exist, the council covering the map pin is suggested (`GET /councils/locate`). Once council boundaries exist (Milestone 4), the council is pre-selected from the map pin, and the API already refuses a location outside a council's boundary whenever that boundary is known. Every report must also fall inside the service area (Zimbabwe, configurable).
 - **Publication of public reports:** a report marked PUBLIC becomes visible to everyone only after a council verifies it (status VERIFIED or later). Until then only the reporter and that council's staff can see it. REJECTED and DUPLICATE reports are never published. PRIVATE reports are never published.
 - **Accounts:** an account is required to submit a report, so reports can be tracked and abuse limited (20 reports per person per hour by default). Drafts can be prepared offline before signing in (Milestone 2.3).
 - **Visibility is fixed at submission.** Changing it later needs an authorised, audited workflow, which is not built yet.
 - **Residents cannot edit or delete a report after submitting it.** Corrections come through the council's "needs information" step (Milestone 3). Until the council starts reviewing it, the reporter may add or remove photos (up to five).
 - **Drafts stay on the device.** A report in progress is saved on the phone as it is written, including its photos, so a reload, closed browser or lost connection loses nothing. A draft can be written while signed out; sending it needs an account. Signing out deletes any unsent draft, because phones are often shared.
 - **Report references** are sequential and quotable, e.g. `CW-000123`.
+
+## Boundaries (agreed before Milestone 4)
+
+- No official boundary files are available yet, so the platform ships **sample boundaries**: simple octagons around six city centres (Harare, Bulawayo, Mutare, Gweru, Masvingo, Kwekwe), loaded with `python -m app.cli load-sample-boundaries`. They are marked `sample` in the database and API and must always be labelled as samples in the UI.
+- Platform administrators replace them with official GeoJSON boundaries through the API; an official boundary is never overwritten by the sample loader.
 
 ## Open questions (need product decisions)
 

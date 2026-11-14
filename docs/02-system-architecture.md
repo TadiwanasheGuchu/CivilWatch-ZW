@@ -63,5 +63,7 @@ Server components by default; client components only where interactivity or TanS
 | Status workflow as one declarative table (`services/workflow.py`): permission, scope (council, department, assignee) and note rule per transition; the API offers each caller exactly the transitions they may make | Adopted (stage 3.1) |
 | Status changes lock the report row (`SELECT … FOR UPDATE`) so concurrent changes cannot both succeed | Adopted (stage 3.1) |
 | Photos carry a `kind` (`report` or `repair`) in one `issue_media` table, with separate limits and permissions | Adopted (stage 3.2) |
+| Map clustering in PostGIS (`ST_SnapToGrid` on a zoom-dependent grid) so clients receive at most 2,000 clusters, never raw point dumps | Adopted (stage 4.1) |
+| Boundaries validated in PostGIS (`ST_IsValid`, vertex limit, inside the service area) and simplified to ~100 m for display | Adopted (stage 4.1) |
 | Council screens under `/council/[id]/…` (overview, reports, review, my work, departments, staff, audit), in `features/council/operations/` | Adopted (stage 3.2) |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

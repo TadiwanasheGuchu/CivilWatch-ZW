@@ -136,7 +136,7 @@ def test_council_boundary_is_enforced_when_known(world, make_client, owner_engin
     with owner_engine.begin() as connection:
         connection.execute(
             text(
-                "UPDATE councils SET boundary = "
+                "UPDATE councils SET boundary_source = 'official', boundary = "
                 "ST_Multi(ST_MakeEnvelope(30.9, -17.95, 31.2, -17.7, 4326)) "
                 "WHERE slug = 'harare'"
             )

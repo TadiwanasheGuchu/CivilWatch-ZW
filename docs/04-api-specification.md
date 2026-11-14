@@ -229,6 +229,32 @@ Any staff may list; administrators create (`{ name, description? }`) and update 
 ### `PATCH /members/{membership_id}` (changed)
 Body `{ "role"?, "department_id"? }` — at least one. A department applies only to managers and maintenance officers (`422` otherwise); changing someone to another role clears it. Member responses now include `department: { id, name } | null`. Audited as `membership.role_changed` / `membership.department_changed`.
 
+## Maps and places
+
+### `GET /api/v1/councils/boundaries`
+Public. A GeoJSON FeatureCollection of active councils' boundaries, simplified to about 100 m, always as MultiPolygons. Feature properties: `id`, `slug`, `name`, `is_sample`. Cached for 5 minutes (`Cache-Control: public, max-age=300`).
+
+### `GET /api/v1/councils/locate?latitude=&longitude=`
+Public. Active councils whose boundary covers the point, smallest area first: `[{ id, slug, name, is_sample_boundary }]`. Empty where no boundary covers it.
+
+### `PUT /api/v1/councils/{council_id}/boundary`
+Platform administrators only (CSRF). Body `{ "geometry": <GeoJSON>, "source": "official" | "sample" }`, where the GeoJSON may be a Polygon, MultiPolygon, Feature or one-feature FeatureCollection with `[longitude, latitude]` coordinates. Must be valid (the reason is returned if not), at most 100,000 points, inside the service area (swapped coordinates are called out) and under 5 MB. Returns `{ council_id, source, area_km2, vertex_count, overlaps: [council names] }`; overlaps are reported, not refused. Audited as `council.boundary_set`.
+
+### `DELETE /api/v1/councils/{council_id}/boundary`
+Platform administrators only (CSRF). `204`. Audited as `council.boundary_cleared`.
+
+### `GET /api/v1/map/clusters?bbox=west,south,east,north&zoom=`
+Public. Published public reports in the box, grouped on a grid of about a quarter map tile at that zoom (0–22): `{ zoom, total, clusters: [{ latitude, longitude, count, issue_id, status }] }` (`issue_id` and `status` only for single-report clusters). Filters: `council_id`, `category`, `status` (repeatable). At most 2,000 clusters.
+
+### `GET /api/v1/issues/nearby?latitude=&longitude=&radius_m=&category=&limit=`
+Public. Published public reports within `radius_m` (25–5000, default 500), closest first, each `PublicIssue` plus `distance_m`. Used by "near me" and to warn reporters about similar existing reports.
+
+### `GET /api/v1/councils/{council_id}/map/clusters`
+Staff (`issues.view`). As the public endpoint, but all of the council's reports, any visibility or status.
+
+### `GET /api/v1/councils/{council_id}/issues/{issue_id}/nearby?radius_m=&limit=`
+Staff. Other reports in the same council within `radius_m` (25–2000, default 200), any status, closest first: `StaffIssueSummary` plus `distance_m`. Helps verification officers spot duplicates.
+
 ## Planned endpoint groups
 
-`/map`, `/analytics`, `/notifications` — each documented here when implemented.
+`/analytics`, `/notifications` — each documented here when implemented.
