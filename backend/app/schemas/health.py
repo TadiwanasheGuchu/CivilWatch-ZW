@@ -14,3 +14,4 @@ class ReadinessResponse(BaseModel):
     database: ComponentStatus
     postgis: ComponentStatus
     cache: ComponentStatus
+    storage: ComponentStatus

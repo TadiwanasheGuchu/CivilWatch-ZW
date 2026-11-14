@@ -35,7 +35,7 @@ Process liveness. Unauthenticated. `200 {"status": "ok"}`.
 Dependency readiness. Unauthenticated; reveals only coarse status.
 
 ```json
-{ "status": "ok", "database": "ok", "postgis": "ok", "cache": "ok" }
+{ "status": "ok", "database": "ok", "postgis": "ok", "cache": "ok", "storage": "ok" }
 ```
 
 Returns `503` with the same shape and `"status": "degraded"` when any dependency is unavailable.
@@ -145,7 +145,7 @@ Signed in, with CSRF. Body:
 
 Title 5–120 characters (single line), description 10–2000, `location_description` optional (≤200), no control characters. Unknown fields (e.g. `status`, `reporter_id`) are rejected. `201 OwnIssue`. Business-rule failures use the standard `422 validation_error` envelope with the offending field in `details[].location`: unknown or inactive council (`council_id`), unknown category (`category_id`), location outside the service area or outside the council's known boundary (`latitude`). `429` after 20 reports per user per hour.
 
-`OwnIssue`: `{ id, reference, council: { id, slug, name }, category: { code, name }, title, description, status, latitude, longitude, location_description, created_at, updated_at, visibility, is_published }`.
+`OwnIssue`: `{ id, reference, council: { id, slug, name }, category: { code, name }, title, description, status, latitude, longitude, location_description, created_at, updated_at, photo_count, cover_thumbnail_url, visibility, is_published }`. `cover_thumbnail_url` is a signed URL for the first photo's thumbnail, or `null`.
 
 ### `GET /api/v1/issues/mine`
 Signed in. The caller's own reports, newest first, any visibility: `Page<OwnIssue>`.
@@ -154,7 +154,12 @@ Signed in. The caller's own reports, newest first, any visibility: `Page<OwnIssu
 Public. Published public reports, newest first: `Page<PublicIssue>`. Filters: `council_id`, `category` (a category code), `status` (one of the published statuses; anything else is `422`). `PublicIssue` is `OwnIssue` without `visibility` and `is_published`, and never identifies the reporter.
 
 ### `GET /api/v1/issues/{issue_id}`
-Public; signing in lets reporters see their own unpublished or private reports. Returns the report plus `history: [{ from_status, to_status, created_at }]`, as `OwnIssueDetail` for the reporter or `PublicIssueDetail` for everyone else. `404` if the caller may not see it.
+Public; signing in lets reporters see their own unpublished or private reports. Returns the report plus `history: [{ from_status, to_status, created_at }]` and `photos: [{ id, url, thumbnail_url, width, height }]`, as `OwnIssueDetail` for the reporter or `PublicIssueDetail` for everyone else. `404` if the caller may not see it.
+
+**Photo URLs** are pre-signed and expire after `CIVICWATCH_MEDIA_URL_TTL_SECONDS` (default 5 minutes). Fetch the report again for fresh URLs. They are generated only for reports the caller may see.
+
+### `POST /api/v1/issues/{issue_id}/photos`
+Signed in, with CSRF; `multipart/form-data` with one `file` field. Only the reporter, and only while the report is `SUBMITTED`. JPEG, PNG or WebP up to 10 MB; the stored photo is a re-encoded JPEG of at most 1600 px (plus a 400 px thumbnail) with all metadata removed. `201 { id, url, thumbnail_url, width, height }`. Errors: `404` not your report; `409 report_locked` once the council has started on it; `409 photo_limit_reached` after 5 photos; `413 photo_too_large`; `422 invalid_photo` for anything that is not a readable JPEG/PNG/WebP or is over 40 megapixels; `429` after 60 uploads per hour; `503` if storage is unavailable (nothing is saved).
 
 ## Planned endpoint groups
 

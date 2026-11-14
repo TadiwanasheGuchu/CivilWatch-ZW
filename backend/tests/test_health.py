@@ -18,6 +18,7 @@ def test_readiness_reports_database_postgis_and_cache(client: TestClient) -> Non
         "database": "ok",
         "postgis": "ok",
         "cache": "ok",
+        "storage": "ok",
     }
 
 
@@ -33,3 +34,19 @@ def test_readiness_degrades_when_cache_is_down(client: TestClient) -> None:
     assert body["status"] == "degraded"
     assert body["cache"] == "unavailable"
     assert body["database"] == "ok"
+
+
+def test_readiness_degrades_when_storage_is_down(client: TestClient) -> None:
+    from app.core.config import get_settings
+    from app.core.storage import ObjectStorage, get_storage
+
+    broken = ObjectStorage(
+        get_settings().model_copy(update={"storage_endpoint_url": "http://127.0.0.1:1"})
+    )
+    client.app.dependency_overrides[get_storage] = lambda: broken
+    try:
+        response = client.get("/api/v1/health/ready")
+    finally:
+        client.app.dependency_overrides.clear()
+    assert response.status_code == 503
+    assert response.json()["storage"] == "unavailable"

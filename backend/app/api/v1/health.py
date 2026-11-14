@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import get_redis
 from app.core.database import get_db
+from app.core.storage import ObjectStorage, get_storage
 from app.schemas.health import LivenessResponse, ReadinessResponse
 from app.services import health as health_service
 
@@ -34,8 +35,9 @@ def ready(
     response: Response,
     db: Annotated[Session, Depends(get_db)],
     redis_client: Annotated[Redis, Depends(get_redis)],
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
 ) -> ReadinessResponse:
-    result = health_service.readiness(db, redis_client)
+    result = health_service.readiness(db, redis_client, storage)
     if result.status != "ok":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return result

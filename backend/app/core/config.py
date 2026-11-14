@@ -7,7 +7,14 @@ environment (or a secret manager that populates it).
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator, model_validator
+from pydantic import (
+    Field,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,6 +67,29 @@ class Settings(BaseSettings):
     registration_window_seconds: int = 60 * 60
     reports_per_user: int = 20
     report_window_seconds: int = 60 * 60
+
+    photo_uploads_per_user: int = 60
+    photo_upload_window_seconds: int = 60 * 60
+
+    # --- Photo storage (S3-compatible; MinIO locally) -----------------------------
+    # The bucket must be private. Browsers only ever receive short-lived
+    # pre-signed URLs, signed for storage_public_endpoint_url.
+    storage_endpoint_url: str | None = "http://localhost:9000"
+    storage_public_endpoint_url: str | None = None
+    storage_region: str = "us-east-1"
+    storage_bucket: str = "civicwatch-media"
+    storage_access_key_id: SecretStr | None = None
+    storage_secret_access_key: SecretStr | None = None
+    media_url_ttl_seconds: int = Field(default=300, ge=30, le=3600)
+
+    # --- Photos ------------------------------------------------------------------------
+    photo_max_upload_bytes: int = 10 * 1024 * 1024
+    photos_per_issue: int = 5
+    # Decompression-bomb guard: refuse images with more pixels than this.
+    photo_max_pixels: int = 40_000_000
+    photo_display_max_px: int = 1600
+    photo_thumbnail_max_px: int = 400
+    photo_jpeg_quality: int = Field(default=80, ge=50, le=95)
 
     # --- Service area -----------------------------------------------------------
     # Reports must fall inside this box (west, south, east, north; WGS 84).

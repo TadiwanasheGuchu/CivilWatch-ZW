@@ -3,22 +3,25 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 
 from app.api.deps import CurrentUser, DbDep, OptionalUser, SettingsDep, get_rate_limiter
+from app.api.v1.issue_presenters import IssuePresenter
 from app.core.rate_limit import RateLimiter
-from app.models.issues import Issue, IssueStatus
+from app.core.storage import ObjectStorage, get_storage
+from app.models.issues import IssueStatus
 from app.schemas.issues import (
     CategoryRead,
     CreateIssueRequest,
     OwnIssue,
     OwnIssueDetail,
+    PhotoRead,
     PublicIssue,
     PublicIssueDetail,
-    StatusChange,
 )
 from app.schemas.pagination import Page, PageParams, page_params
 from app.services.issues import IssueService
+from app.services.photos import PhotoService
 
 categories_router = APIRouter(prefix="/categories", tags=["issues"])
 router = APIRouter(prefix="/issues", tags=["issues"])
@@ -34,10 +37,23 @@ def get_issue_service(
 
 
 ServiceDep = Annotated[IssueService, Depends(get_issue_service)]
+StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
 
 
-def _own(issue: Issue) -> OwnIssue:
-    return OwnIssue.model_validate(issue)
+def get_presenter(storage: StorageDep, settings: SettingsDep) -> IssuePresenter:
+    return IssuePresenter(storage, settings.media_url_ttl_seconds)
+
+
+PresenterDep = Annotated[IssuePresenter, Depends(get_presenter)]
+
+
+def get_photo_service(
+    db: DbDep,
+    settings: SettingsDep,
+    storage: StorageDep,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+) -> PhotoService:
+    return PhotoService(db, settings, storage, limiter)
 
 
 @categories_router.get("", response_model=list[CategoryRead], summary="Report categories")
@@ -57,8 +73,10 @@ def list_categories(service: ServiceDep) -> list[CategoryRead]:
         429: {"description": "Too many reports; see Retry-After"},
     },
 )
-def submit_report(payload: CreateIssueRequest, user: CurrentUser, service: ServiceDep) -> OwnIssue:
-    return _own(service.submit(user, payload))
+def submit_report(
+    payload: CreateIssueRequest, user: CurrentUser, service: ServiceDep, present: PresenterDep
+) -> OwnIssue:
+    return present.own(service.submit(user, payload))
 
 
 @router.get(
@@ -67,10 +85,15 @@ def submit_report(payload: CreateIssueRequest, user: CurrentUser, service: Servi
     summary="Your reports, newest first",
     responses={401: {"description": "Not signed in"}},
 )
-def my_reports(user: CurrentUser, service: ServiceDep, page: PageDep) -> Page[OwnIssue]:
+def my_reports(
+    user: CurrentUser, service: ServiceDep, present: PresenterDep, page: PageDep
+) -> Page[OwnIssue]:
     items, total = service.list_mine(user, page)
     return Page(
-        items=[_own(i) for i in items], page=page.page, page_size=page.page_size, total=total
+        items=[present.own(i) for i in items],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
     )
 
 
@@ -81,6 +104,7 @@ def my_reports(user: CurrentUser, service: ServiceDep, page: PageDep) -> Page[Ow
 )
 def browse_reports(
     service: ServiceDep,
+    present: PresenterDep,
     page: PageDep,
     council_id: Annotated[uuid.UUID | None, Query()] = None,
     category: Annotated[str | None, Query(max_length=40, pattern=r"^[a-z0-9-]+$")] = None,
@@ -93,7 +117,7 @@ def browse_reports(
         status=IssueStatus(status_filter) if status_filter else None,
     )
     return Page(
-        items=[PublicIssue.model_validate(i) for i in items],
+        items=[present.public(i) for i in items],
         page=page.page,
         page_size=page.page_size,
         total=total,
@@ -107,10 +131,44 @@ def browse_reports(
     responses={404: {"description": "Not found, or not visible to you"}},
 )
 def read_report(
-    issue_id: uuid.UUID, viewer: OptionalUser, service: ServiceDep
+    issue_id: uuid.UUID, viewer: OptionalUser, service: ServiceDep, present: PresenterDep
 ) -> OwnIssueDetail | PublicIssueDetail:
     view = service.get_for_viewer(issue_id, viewer)
-    history = [StatusChange.model_validate(h) for h in view.history]
     if view.viewer_is_reporter:
-        return OwnIssueDetail(**_own(view.issue).model_dump(), history=history)
-    return PublicIssueDetail(**PublicIssue.model_validate(view.issue).model_dump(), history=history)
+        return present.own_detail(view.issue, view.history)
+    return present.public_detail(view.issue, view.history)
+
+
+# Multipart framing overhead allowed on top of the photo itself.
+_MULTIPART_OVERHEAD = 64 * 1024
+
+
+@router.post(
+    "/{issue_id}/photos",
+    status_code=status.HTTP_201_CREATED,
+    response_model=PhotoRead,
+    summary="Add a photo to your report (JPEG, PNG or WebP)",
+    responses={
+        404: {"description": "Not your report"},
+        409: {"description": "Report no longer accepts photos, or photo limit reached"},
+        413: {"description": "Photo too large"},
+        422: {"description": "Not a readable photo"},
+        429: {"description": "Too many uploads"},
+    },
+)
+def add_photo(
+    issue_id: uuid.UUID,
+    request: Request,
+    user: CurrentUser,
+    settings: SettingsDep,
+    photos: Annotated[PhotoService, Depends(get_photo_service)],
+    present: PresenterDep,
+    file: Annotated[UploadFile, File(description="The photo")],
+) -> PhotoRead:
+    declared = request.headers.get("content-length", "")
+    max_request = settings.photo_max_upload_bytes + _MULTIPART_OVERHEAD
+    if declared.isdigit() and int(declared) > max_request:
+        raise photos.too_large()
+    # Read at most one byte past the limit, whatever the client claimed.
+    data = file.file.read(settings.photo_max_upload_bytes + 1)
+    return present.photo(photos.add_photo(user, issue_id, data))

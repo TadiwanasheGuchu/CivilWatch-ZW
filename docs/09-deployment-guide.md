@@ -17,9 +17,13 @@ docker compose up --build
 | `db` | 127.0.0.1:5432 | `postgis/postgis:16-3.4` |
 | `redis` | 127.0.0.1:6379 | Cache and Celery broker |
 | `worker` | — | Celery worker with embedded beat scheduler (hourly session purge) |
+| `minio` | 127.0.0.1:9000 (S3), :9001 (console) | Private photo storage; browsers fetch photos here through signed URLs |
+| `minio-init` | — | Creates the private bucket and a storage account limited to it, then exits |
 | `migrate` | — | Runs `alembic upgrade head` before `api` and `worker` start |
 
-The database container creates `civicwatch_app` (password `APP_DB_PASSWORD` from `.env`) only when its volume is first initialised. **If you ran the stack before stage 1.3**, recreate the volume so the role exists (this deletes local data):
+The database container creates `civicwatch_app` (password `APP_DB_PASSWORD` from `.env`) only when its volume is first initialised. `.env` also needs the MinIO and storage values from `.env.example` (stage 2.2).
+
+**If you ran the stack before stage 1.3**, recreate the volume so the role exists (this deletes local data):
 
 ```bash
 docker compose down -v
@@ -77,8 +81,17 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_REPORTS_PER_USER` | `20` | Reports one user may submit per window |
 | `CIVICWATCH_REPORT_WINDOW_SECONDS` | `3600` | Report rate-limit window |
 | `CIVICWATCH_SERVICE_AREA_BBOX` | `[25.0,-22.6,33.2,-15.4]` | West, south, east, north (WGS 84) that every report must fall inside; default covers Zimbabwe |
+| `CIVICWATCH_STORAGE_ENDPOINT_URL` | `http://localhost:9000` | S3 endpoint the API uses (unset for AWS S3) |
+| `CIVICWATCH_STORAGE_PUBLIC_ENDPOINT_URL` | same as above | Endpoint photo URLs are signed for — the address browsers reach |
+| `CIVICWATCH_STORAGE_BUCKET` | `civicwatch-media` | Must be private |
+| `CIVICWATCH_STORAGE_ACCESS_KEY_ID`, `CIVICWATCH_STORAGE_SECRET_ACCESS_KEY` | — | Storage credentials; give them access to this bucket only |
+| `CIVICWATCH_STORAGE_REGION` | `us-east-1` | |
+| `CIVICWATCH_MEDIA_URL_TTL_SECONDS` | `300` | Lifetime of signed photo URLs (30–3600) |
+| `CIVICWATCH_PHOTO_MAX_UPLOAD_BYTES` | `10485760` | Largest accepted upload |
+| `CIVICWATCH_PHOTOS_PER_ISSUE` | `5` | Photos per report |
+| `CIVICWATCH_PHOTO_UPLOADS_PER_USER` | `60` | Uploads per user per window (`CIVICWATCH_PHOTO_UPLOAD_WINDOW_SECONDS`, 3600) |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000/api/v1` | API base URL baked into the frontend build |
 
 ## Production
 
-Not yet defined (Milestone 6). Requirements already fixed: HTTPS only, secrets from a secret manager, the API connected as `civicwatch_app` and migrations as a separate non-superuser owner role (extensions installed by a DBA), private object storage, database role without superuser or table ownership for the app (needed for RLS), backups for PostgreSQL, uvicorn behind the proxy with `--proxy-headers --forwarded-allow-ips=<proxy IPs>` so rate limits see real client IPs, and a separate `celery beat` process.
+Not yet defined (Milestone 6). Requirements already fixed: HTTPS only, secrets from a secret manager, the API connected as `civicwatch_app` and migrations as a separate non-superuser owner role (extensions installed by a DBA), private object storage, database role without superuser or table ownership for the app (needed for RLS), backups for PostgreSQL, uvicorn behind the proxy with `--proxy-headers --forwarded-allow-ips=<proxy IPs>` so rate limits see real client IPs, a separate `celery beat` process, and a private bucket (AWS S3 or another S3-compatible service; MinIO no longer publishes community images or binaries) with credentials limited to that bucket.

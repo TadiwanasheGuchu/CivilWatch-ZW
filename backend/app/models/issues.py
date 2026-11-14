@@ -108,6 +108,10 @@ class Issue(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     council: Mapped[Council] = relationship(lazy="joined")
     category: Mapped[IssueCategory] = relationship(lazy="joined")
+    # selectin: one extra query for a whole page of reports, never N+1.
+    photos: Mapped[list["IssueMedia"]] = relationship(
+        lazy="selectin", order_by="IssueMedia.created_at", viewonly=True
+    )
 
     __table_args__ = (
         CheckConstraint(f"status IN ({_STATUS_VALUES})", name="status_valid"),
@@ -158,4 +162,38 @@ class IssueStatusHistory(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         CheckConstraint(f"to_status IN ({_STATUS_VALUES})", name="to_status_valid"),
         Index("ix_issue_status_history_issue_id_created_at", "issue_id", "created_at"),
+    )
+
+
+class IssueMedia(UUIDPrimaryKeyMixin, Base):
+    """A sanitised photo stored privately in object storage.
+
+    Only object keys are stored; URLs are generated per request and expire.
+    """
+
+    __tablename__ = "issue_media"
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("issues.id", ondelete="RESTRICT"), nullable=False
+    )
+    uploaded_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    display_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    thumbnail_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+
+    __table_args__ = (
+        CheckConstraint("content_type = 'image/jpeg'", name="content_type_valid"),
+        CheckConstraint("width > 0 AND height > 0 AND byte_size > 0", name="dimensions_positive"),
+        Index("ix_issue_media_issue_id_created_at", "issue_id", "created_at"),
     )

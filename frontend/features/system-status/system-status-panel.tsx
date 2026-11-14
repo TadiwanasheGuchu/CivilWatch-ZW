@@ -12,6 +12,7 @@ const COMPONENT_LABELS: Record<keyof Omit<Readiness, "status">, string> = {
   database: "Report database",
   postgis: "Mapping engine",
   cache: "Background jobs queue",
+  storage: "Photo storage",
 };
 
 function StatusRow({ label, status }: { label: string; status: ComponentStatus }) {

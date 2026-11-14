@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.storage import ObjectStorage
 from app.schemas.health import ComponentStatus, ReadinessResponse
 
 logger = logging.getLogger(__name__)
@@ -38,10 +39,15 @@ def check_cache(redis_client: Redis) -> ComponentStatus:
     return "ok"
 
 
-def readiness(db: Session, redis_client: Redis) -> ReadinessResponse:
+def readiness(db: Session, redis_client: Redis, storage: ObjectStorage) -> ReadinessResponse:
     database, postgis = check_database(db)
     cache = check_cache(redis_client)
-    healthy = database == "ok" and postgis == "ok" and cache == "ok"
+    storage_status: ComponentStatus = "ok" if storage.is_available() else "unavailable"
+    components = (database, postgis, cache, storage_status)
     return ReadinessResponse(
-        status="ok" if healthy else "degraded", database=database, postgis=postgis, cache=cache
+        status="ok" if all(c == "ok" for c in components) else "degraded",
+        database=database,
+        postgis=postgis,
+        cache=cache,
+        storage=storage_status,
     )

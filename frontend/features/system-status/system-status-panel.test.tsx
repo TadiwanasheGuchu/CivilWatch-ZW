@@ -23,14 +23,14 @@ afterEach(() => {
 
 describe("SystemStatusPanel", () => {
   it("shows all services operational", async () => {
-    mockFetch(200, { status: "ok", database: "ok", postgis: "ok", cache: "ok" });
+    mockFetch(200, { status: "ok", database: "ok", postgis: "ok", cache: "ok", storage: "ok" });
     renderWithClient(<SystemStatusPanel />);
     expect(await screen.findByText("All services are operational.")).toBeInTheDocument();
-    expect(screen.getAllByText("Operational")).toHaveLength(3);
+    expect(screen.getAllByText("Operational")).toHaveLength(4);
   });
 
   it("treats a 503 readiness body as a degraded state, not an error", async () => {
-    mockFetch(503, { status: "degraded", database: "ok", postgis: "ok", cache: "unavailable" });
+    mockFetch(503, { status: "degraded", database: "ok", postgis: "ok", cache: "unavailable", storage: "ok" });
     renderWithClient(<SystemStatusPanel />);
     expect(await screen.findByText(/Some services are unavailable/)).toBeInTheDocument();
     expect(screen.getByText("Unavailable")).toBeInTheDocument();

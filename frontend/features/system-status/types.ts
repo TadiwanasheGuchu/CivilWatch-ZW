@@ -6,4 +6,5 @@ export interface Readiness {
   database: ComponentStatus;
   postgis: ComponentStatus;
   cache: ComponentStatus;
+  storage: ComponentStatus;
 }

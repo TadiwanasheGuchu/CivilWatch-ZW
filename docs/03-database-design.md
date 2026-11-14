@@ -19,6 +19,7 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `0002` | Create `users` and `user_sessions` |
 | `0003` | Create `councils`, `council_memberships`, `audit_logs`; grant privileges to `civicwatch_app`; RLS helper functions and policies |
 | `0004` | Create `issue_categories` (seeded with the eight categories), `issues`, `issue_status_history`; grants and RLS policies |
+| `0005` | Create `issue_media`; grants and RLS policies |
 
 ### `users`
 
@@ -114,18 +115,33 @@ Indexes: `(council_id, status)` for council queues, `(reporter_id, created_at)` 
 
 Append-only: one row per status change. Columns: `id`, `issue_id` (FK, restrict), `from_status` (null for submission), `to_status`, `changed_by_user_id` (FK, set null), `created_at` (set by the application so inserts need no `RETURNING`). Index `(issue_id, created_at)`.
 
+### `issue_media`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | Also part of the object keys |
+| `issue_id` | uuid FK → issues (restrict) | |
+| `uploaded_by_user_id` | uuid FK → users (set null), null | |
+| `display_key`, `thumbnail_key` | varchar(255), unique | Object keys `issues/{issue_id}/{media_id}/display.jpg` and `…/thumbnail.jpg`; never URLs |
+| `content_type` | varchar(32) | Check: `image/jpeg` (every upload is re-encoded) |
+| `width`, `height`, `byte_size` | integer | Of the display image; check: positive |
+| `created_at` | timestamptz | Set by the application |
+
+Index `(issue_id, created_at)`. Reports load their photos with one extra query per page (`selectin`), never one per report.
+
 ## Database roles and Row-Level Security
 
 | Role | Used by | Privileges |
 |---|---|---|
 | Schema owner (`POSTGRES_USER`) | Alembic only | Owns all tables and the RLS helper functions |
-| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT (UPDATE arrives with the Milestone 3 workflow) · `issue_categories`: SELECT |
+| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT (UPDATE arrives with the Milestone 3 workflow) · `issue_media`: SELECT/INSERT · `issue_categories`: SELECT |
 
 The API sets the transaction-local setting `app.user_id` for every transaction of an authenticated request (`app/core/database.py`). Policies:
 
 - `council_memberships` — read: own rows, rows of councils where the user is an active member, or platform admin. Insert/update: councils where the user is an active `council_admin`, or platform admin. No delete.
 - `audit_logs` — read: platform admin, or `council_admin` of the entry's council. Insert: only as yourself (`actor_user_id` is null or the current user).
 - `issues` — read: the reporter, active staff of the report's council, or anyone (including anonymous requests) when the report is `PUBLIC` and published (`VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`). Insert: only as yourself and only with status `SUBMITTED`. Platform admins get no special access.
+- `issue_media` — read: exactly when the report is readable. Insert: only as yourself, only for your own report, and only while it is `SUBMITTED`.
 - `issue_status_history` — read: exactly when the report is readable (the policy's subquery runs under the `issues` policies). Insert: only as yourself, for a report you can read.
 
 Helper functions `app_current_user_id()`, `app_is_platform_admin()`, `app_member_council_ids()` and `app_admin_council_ids()` are `SECURITY DEFINER` (owner) so policies on `council_memberships` do not recurse into themselves.

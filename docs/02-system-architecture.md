@@ -12,7 +12,7 @@ A **multi-tenant modular monolith**: one FastAPI backend, one Next.js frontend, 
    │  middleware: request ID, logging, security headers, CORS
    │  modules → services → repositories → SQLAlchemy models
    └──► Redis ◄── Celery worker (notifications, image processing)
-                      └──► S3-compatible object storage (private) [Milestone 2]
+                      └──► S3-compatible object storage (private; MinIO locally)
 ```
 
 ## Backend layout (`backend/app/`)
@@ -55,4 +55,6 @@ Server components by default; client components only where interactivity or TanS
 | Tenant isolation via membership-derived scope + PostgreSQL RLS | Implemented (stage 1.3) |
 | Two database roles: schema owner for migrations, unprivileged `civicwatch_app` for the API | Adopted (stage 1.3) — required for RLS to apply; see `06-security-and-privacy.md` |
 | Report locations stored as `geography(Point, 4326)` with a GiST index | Adopted (stage 2.1) — metre-accurate distance queries for nearby search and clustering later |
+| Photos uploaded through the API (not directly to storage), re-encoded with Pillow, stored in a private S3-compatible bucket (`boto3`), served only by pre-signed URLs | Adopted (stage 2.2) — the server must see and sanitise every file before it is stored |
+| Local and CI storage: MinIO (pinned community image); tests fall back to the `moto` S3 emulator when no real service is configured | Adopted (stage 2.2) |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

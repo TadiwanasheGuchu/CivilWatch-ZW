@@ -33,6 +33,40 @@ services:
       timeout: 3s
       retries: 10
 
+  # Private S3-compatible storage for report photos. Pinned: MinIO no longer
+  # publishes new community images, but existing tags remain available.
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+    ports:
+      # The browser fetches photos here through signed URLs.
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?Set STORAGE_ACCESS_KEY_ID in .env}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?Set STORAGE_SECRET_ACCESS_KEY in .env}
+    volumes:
+      - ./docker/minio/init.sh:/init.sh:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+
   migrate:
     build: ./backend
     command: ["alembic", "upgrade", "head"]
@@ -47,6 +81,12 @@ services:
       # Local HTTP only. Staging/production refuse to start with insecure cookies.
       CIVICWATCH_SESSION_COOKIE_NAME: cw_session
       CIVICWATCH_SESSION_COOKIE_SECURE: "false"
+      # The API talks to MinIO inside the Compose network but signs photo
+      # URLs for the address the browser uses.
+      CIVICWATCH_STORAGE_ENDPOINT_URL: http://minio:9000
+      CIVICWATCH_STORAGE_PUBLIC_ENDPOINT_URL: http://localhost:9000
+      CIVICWATCH_STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID}
+      CIVICWATCH_STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -64,6 +104,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -86,6 +128,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
 
   web:
     build:
@@ -100,3 +144,4 @@ services:
 
 volumes:
   db-data:
+  minio-data:

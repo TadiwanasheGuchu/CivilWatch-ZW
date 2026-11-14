@@ -62,7 +62,16 @@ Three independent layers; each would stop a cross-council read on its own.
 - **No modification after submission** through the API, and the API role has no `UPDATE`/`DELETE` privilege on `issues` or `issue_status_history`. Status changes will only happen through Milestone 3's validated transitions, each recorded in the history.
 - **Location checks**: coordinates must be valid, inside the service area, and inside the chosen council's boundary when known (PostGIS `ST_Covers`). Choosing a council is only addressing the report; it grants no council access.
 - **Abuse limits**: an account is required, and each user may submit 20 reports per hour (configurable, fails closed if Redis is down).
-- **Photos** are not accepted yet. Stage 2.2 adds them with content validation, EXIF stripping, private storage and short-lived signed URLs.
+
+## Photo uploads (stage 2.2)
+
+- **Content, not claims, decides.** Uploads are decoded with Pillow; only real JPEG, PNG and WebP pass, whatever the file name or `Content-Type` says. HTML, PDF, GIF, BMP, truncated and empty files are refused.
+- **Nothing is stored as received.** Every photo is re-encoded from its pixels into a new JPEG. This removes all EXIF (including **GPS location**, camera make and software), XMP and ICC data, and drops anything hidden in or appended to the file. The camera's rotation is applied first, so photos still display the right way up. There is no separate virus scan: the original bytes are never stored or served.
+- **Resource limits**: 10 MB per upload (checked from `Content-Length` before reading, and again while reading); 40 megapixels per image, so tiny "decompression bomb" files are refused; 5 photos per report; 60 uploads per user per hour.
+- **Private storage**: the bucket is private. The API stores object keys, never URLs, and returns pre-signed GET URLs valid for 5 minutes, only for reports the caller may see. Unpublished and private report photos are never signed for anyone but the reporter (and, from Milestone 3, that council's staff). Locally the API uses its own storage account limited to the media bucket.
+- **Who may upload**: only the reporter, only while the report is `SUBMITTED` (API check and RLS insert policy). Concurrent uploads cannot exceed the per-report limit (transaction-scoped advisory lock).
+- **Failure handling**: if storage is down, the upload fails with 503 and nothing is recorded; if the database write fails after storing, the stored objects are deleted.
+- **Not yet done**: residents cannot delete a photo they added by mistake (planned with the report form in 2.3); HEIC photos are not accepted (browsers on Android and iOS normally upload JPEG).
 
 ## Frontend
 

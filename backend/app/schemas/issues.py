@@ -75,6 +75,16 @@ class CategorySummary(BaseModel):
     name: str
 
 
+class PhotoRead(BaseModel):
+    """URLs are pre-signed and expire after a few minutes; fetch the report again for fresh ones."""
+
+    id: uuid.UUID
+    url: str
+    thumbnail_url: str
+    width: int
+    height: int
+
+
 class PublicIssue(BaseModel):
     """What anyone may see of a published PUBLIC report. Never identifies the reporter."""
 
@@ -92,6 +102,8 @@ class PublicIssue(BaseModel):
     location_description: str | None
     created_at: datetime
     updated_at: datetime
+    photo_count: int = 0
+    cover_thumbnail_url: str | None = None
 
 
 class OwnIssue(PublicIssue):
@@ -111,7 +123,9 @@ class StatusChange(BaseModel):
 
 class OwnIssueDetail(OwnIssue):
     history: list[StatusChange]
+    photos: list[PhotoRead]
 
 
 class PublicIssueDetail(PublicIssue):
     history: list[StatusChange]
+    photos: list[PhotoRead]

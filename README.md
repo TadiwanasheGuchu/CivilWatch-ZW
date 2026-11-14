@@ -2,7 +2,7 @@
 
 A multi-council civic infrastructure reporting platform for Zimbabwe. Residents report potholes, broken streetlights, blocked drains, water leaks and waste problems; councils verify, assign and resolve them in the open.
 
-> **Status:** Milestone 1 (foundation) is complete: accounts, sign-in, councils with roles and tenant isolation, and their screens. Milestone 2 (reporting) is in progress: the report submission and browsing API is done; photo uploads and the reporting screens are next. See [`docs/08-development-roadmap.md`](docs/08-development-roadmap.md).
+> **Status:** Milestone 1 (foundation) is complete: accounts, sign-in, councils with roles and tenant isolation, and their screens. Milestone 2 (reporting) is in progress: the report submission, browsing and photo upload APIs are done; the reporting screens are next. See [`docs/08-development-roadmap.md`](docs/08-development-roadmap.md).
 
 ## Stack
 

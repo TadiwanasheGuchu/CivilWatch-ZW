@@ -18,6 +18,13 @@ env:
   CIVICWATCH_DATABASE_URL: postgresql+psycopg://civicwatch_app:civicwatch_app@localhost:5432/civicwatch_test
   CIVICWATCH_MIGRATION_DATABASE_URL: postgresql+psycopg://civicwatch:civicwatch@localhost:5432/civicwatch_test
   CIVICWATCH_REDIS_URL: redis://localhost:6379/0
+  # Real S3-compatible storage (MinIO), so tests also prove that photos cannot
+  # be fetched without a valid, unexpired signature.
+  CIVICWATCH_STORAGE_ENDPOINT_URL: http://localhost:9000
+  CIVICWATCH_STORAGE_ACCESS_KEY_ID: ci-minio-user
+  CIVICWATCH_STORAGE_SECRET_ACCESS_KEY: ci-minio-password
+  CIVICWATCH_TEST_EXTERNAL_STORAGE: "1"
+  CIVICWATCH_TEST_STORAGE_ENFORCES_AUTH: "1"
 
 jobs:
   backend:
@@ -42,6 +49,13 @@ jobs:
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=ci-minio-user -e MINIO_ROOT_PASSWORD=ci-minio-password \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/ready && exit 0; sleep 1; done
+          docker logs minio; exit 1
       - name: Create application database role
         env:
           PGPASSWORD: civicwatch
@@ -96,6 +110,13 @@ jobs:
         ports: ["6379:6379"]
     steps:
       - uses: actions/checkout@v4
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=ci-minio-user -e MINIO_ROOT_PASSWORD=ci-minio-password \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/ready && exit 0; sleep 1; done
+          docker logs minio; exit 1
       - name: Create application database role
         env:
           PGPASSWORD: civicwatch
@@ -122,6 +143,7 @@ jobs:
         run: |
           pip install -e .
           alembic upgrade head
+          python -c "from app.core.storage import get_storage; get_storage().ensure_bucket()"
           nohup uvicorn app.main:app --port 8000 > api.log 2>&1 &
       - name: Build web
         working-directory: frontend
