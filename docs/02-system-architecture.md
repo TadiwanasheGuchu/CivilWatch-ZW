@@ -37,7 +37,7 @@ Request flow: middleware assigns/propagates `X-Request-ID` → route → service
 |---|---|
 | `app/` | App Router routes, root layout, providers |
 | `components/` | Shared UI (`components/ui/` holds design-system primitives) |
-| `features/<domain>/` | Domain features: API calls, hooks, components, types |
+| `features/<domain>/` | Domain features: API calls, hooks, components, types. Current: `authentication`, `council`, `reporting` (report form in `reporting/wizard/`), `maps`, `navigation`, `system-status` |
 | `lib/` | API client, config, utilities |
 | `tests/` | Vitest setup and Playwright E2E specs |
 
@@ -57,4 +57,7 @@ Server components by default; client components only where interactivity or TanS
 | Report locations stored as `geography(Point, 4326)` with a GiST index | Adopted (stage 2.1) — metre-accurate distance queries for nearby search and clustering later |
 | Photos uploaded through the API (not directly to storage), re-encoded with Pillow, stored in a private S3-compatible bucket (`boto3`), served only by pre-signed URLs | Adopted (stage 2.2) — the server must see and sanitise every file before it is stored |
 | Local and CI storage: MinIO (pinned community image); tests fall back to the `moto` S3 emulator when no real service is configured | Adopted (stage 2.2) |
+| Report drafts kept in the browser's IndexedDB (photos as Blobs), with an in-memory fallback | Adopted (stage 2.3) — offline drafting on budget phones |
+| Photos compressed in the browser before upload (≤1600 px JPEG); uploads use XMLHttpRequest for progress | Adopted (stage 2.3) — saves mobile data; the server still validates and re-encodes |
+| MapLibre GL JS with raster tiles, loaded only when a map is shown; its worker served from `public/maplibre/` | Adopted (stage 2.3) |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

@@ -91,6 +91,29 @@ class PhotoService:
         logger.info("photo added", extra={"issue_id": str(issue_id), "media_id": str(media_id)})
         return media
 
+    def remove_photo(self, reporter: User, issue_id: uuid.UUID, photo_id: uuid.UUID) -> None:
+        """Remove a photo added by mistake, before the council has started on the report."""
+        issue = self.issues.get(issue_id)
+        if issue is None or issue.reporter_id != reporter.id:
+            raise NotFoundError("Report not found.")
+        media = self.db.scalar(
+            select(IssueMedia).where(IssueMedia.id == photo_id, IssueMedia.issue_id == issue_id)
+        )
+        if media is None:
+            raise NotFoundError("Photo not found.")
+        if issue.status != IssueStatus.SUBMITTED:
+            raise ReportLockedError(
+                "Photos can only be removed while the report is waiting for council review."
+            )
+        keys = (media.display_key, media.thumbnail_key)
+        self.db.delete(media)
+        self.db.commit()
+        # Delete the objects only once the row is gone, so no row points at
+        # a missing object. A failed object delete leaves a harmless private orphan.
+        for key in keys:
+            self.storage.delete(key)
+        logger.info("photo removed", extra={"issue_id": str(issue_id), "media_id": str(photo_id)})
+
     def _ensure_room(self, issue_id: uuid.UUID) -> None:
         # Serialise uploads to the same report for the rest of this transaction,
         # so two simultaneous uploads cannot both pass the limit. (Row locks

@@ -30,3 +30,6 @@ test-results/
 
 # Local Redis snapshots
 dump.rdb
+
+# Generated at build time from node_modules (scripts/copy-map-worker.mjs)
+frontend/public/maplibre/

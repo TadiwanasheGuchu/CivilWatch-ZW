@@ -49,7 +49,13 @@ Tokens live in `frontend/app/globals.css` (Tailwind v4 `@theme`). Use the token 
 | `Badge` | `components/ui/badge.tsx` | `neutral`, `brand` (roles), `navy` (platform admin) |
 | `Pagination` | `components/ui/pagination.tsx` | Previous/next with "Page x of y"; hidden for a single page |
 | `LoadingRows`, `LoadError`, `EmptyState` | `components/ui/page-states.tsx` | Skeleton, error-with-retry and empty states |
-| `SiteHeader` | `components/site-header.tsx` | Navy header with wordmark and the account link (`AccountNav`) |
+| `Textarea` | `components/ui/textarea.tsx` | Same styling and states as `Input` |
+| `ChoiceCard` | `components/ui/choice-card.tsx` | A native radio input presented as a large card (categories, visibility); keyboard and screen-reader friendly |
+| `StatusBadge` | `features/reporting/status-badge.tsx` | Report status as text; tone reinforces it (neutral, progress, done, stopped, attention) |
+| `ReportListItem` | `features/reporting/report-list-item.tsx` | Thumbnail, status, title, category, council, reference and date |
+| `LazyLocationMap` | `features/maps/lazy-location-map.tsx` | MapLibre map, loaded on demand; tap or drag to set a pin; read-only on report pages |
+| `BottomNav`, `HeaderNav` | `features/navigation/` | Resident navigation (see below) |
+| `SiteHeader` | `components/site-header.tsx` | Navy header with wordmark, `HeaderNav` (tablet and up) and the account link |
 
 ### Form conventions
 
@@ -60,6 +66,18 @@ Tokens live in `frontend/app/globals.css` (Tailwind v4 `@theme`). Use the token 
 
 ### Navigation
 
-The resident bottom navigation (Home, Explore, Report, My Reports, Profile) is added in Milestone 2, together with the routes it links to, so no navigation item points at a page that does not exist. Until then the header carries "Sign in" or the account link. Council workspaces use underline tabs (Staff, Audit log); a tab only appears when the user's permissions allow it.
+- **Phones (<768 px)**: a fixed bottom bar with Home, Explore, **Report** (a raised teal button), My reports and Profile. It respects the safe-area inset and is hidden on the report form, which has its own Back/Next bar.
+- **Tablet and up**: the same destinations sit in the header, with "Report a problem" as a teal button.
+- Council workspaces use underline tabs (Staff, Audit log); a tab only appears when the user's permissions allow it.
+
+### Report form
+
+Six steps, one screen each: category → description → photos → location → visibility → review. A progress bar shows "Step n of 6", focus moves to each step's heading, and Back/Next sit in a bar fixed to the bottom of the screen so they stay within thumb reach. Each step is checked before moving on, with messages next to the fields. The review step lists every answer with a "Change" link.
+
+Photos: "Take a photo" (opens the camera where supported) and "Choose from gallery", previews with remove buttons, up to five. Location: "Use my current location" first (most reliable on phones), the map second; the pin's coordinates are always shown as text. If the device cannot run the map, the step says so and location sharing still works; if map images fail to load, the map stays usable with a short note.
+
+### Maps
+
+Raster tiles (OpenStreetMap by default) with attribution, no rotation or tilt, zoom buttons, and cooperative gestures on read-only maps so page scrolling is not hijacked. The map library is only downloaded when a map is shown.
 
 Icons: Lucide only, `size-4`/`size-5`, stroke 2, `aria-hidden` when a text label is present.

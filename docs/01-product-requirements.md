@@ -51,7 +51,8 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 - **Publication of public reports:** a report marked PUBLIC becomes visible to everyone only after a council verifies it (status VERIFIED or later). Until then only the reporter and that council's staff can see it. REJECTED and DUPLICATE reports are never published. PRIVATE reports are never published.
 - **Accounts:** an account is required to submit a report, so reports can be tracked and abuse limited (20 reports per person per hour by default). Drafts can be prepared offline before signing in (Milestone 2.3).
 - **Visibility is fixed at submission.** Changing it later needs an authorised, audited workflow, which is not built yet.
-- **Residents cannot edit or delete a report after submitting it.** Corrections come through the council's "needs information" step (Milestone 3).
+- **Residents cannot edit or delete a report after submitting it.** Corrections come through the council's "needs information" step (Milestone 3). Until the council starts reviewing it, the reporter may add or remove photos (up to five).
+- **Drafts stay on the device.** A report in progress is saved on the phone as it is written, including its photos, so a reload, closed browser or lost connection loses nothing. A draft can be written while signed out; sending it needs an account. Signing out deletes any unsent draft, because phones are often shared.
 - **Report references** are sequential and quotable, e.g. `CW-000123`.
 
 ## Open questions (need product decisions)

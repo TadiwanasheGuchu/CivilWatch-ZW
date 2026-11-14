@@ -75,3 +75,45 @@ export async function expectNoHorizontalScroll(page: Page) {
   );
   expect(overflow).toBeLessThanOrEqual(0);
 }
+
+/** Harare city centre. */
+export const HARARE = { latitude: -17.8292, longitude: 31.0522 };
+export const PHOTO_FIXTURE = path.resolve(__dirname, "fixtures/pothole.jpg");
+
+/**
+ * Test setup only: council workflow endpoints arrive in Milestone 3, so
+ * reports are marked verified directly in the database as the schema owner.
+ */
+export function setReportStatus(issueId: string, status: string) {
+  const script = [
+    "import os, sys",
+    "from sqlalchemy import create_engine, text",
+    "engine = create_engine(os.environ['CIVICWATCH_MIGRATION_DATABASE_URL'])",
+    "with engine.begin() as c:",
+    "    c.execute(text('UPDATE issues SET status = :s WHERE id = :i'), {'s': sys.argv[2], 'i': sys.argv[1]})",
+  ].join("\n");
+  execFileSync(BACKEND_PYTHON, ["-c", script, issueId, status], { cwd: BACKEND_DIR, stdio: "pipe" });
+}
+
+export async function submitReportViaApi(
+  user: ApiUser,
+  councilId: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; reference: string }> {
+  const categories = await (await user.api.get("categories")).json();
+  const response = await user.api.post("issues", {
+    headers: { "X-CSRF-Token": user.csrf },
+    data: {
+      council_id: councilId,
+      category_id: categories[0].id,
+      title: "Pothole near the clinic",
+      description: "Deep pothole that fills with water after rain.",
+      latitude: HARARE.latitude,
+      longitude: HARARE.longitude,
+      visibility: "PUBLIC",
+      ...overrides,
+    },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  return response.json();
+}

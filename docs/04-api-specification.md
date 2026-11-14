@@ -156,6 +156,9 @@ Public. Published public reports, newest first: `Page<PublicIssue>`. Filters: `c
 ### `GET /api/v1/issues/{issue_id}`
 Public; signing in lets reporters see their own unpublished or private reports. Returns the report plus `history: [{ from_status, to_status, created_at }]` and `photos: [{ id, url, thumbnail_url, width, height }]`, as `OwnIssueDetail` for the reporter or `PublicIssueDetail` for everyone else. `404` if the caller may not see it.
 
+### `DELETE /api/v1/issues/{issue_id}/photos/{photo_id}`
+Signed in, with CSRF. The reporter may remove a photo while the report is `SUBMITTED`. `204`; the stored photo and thumbnail are deleted. `404` if it is not your report or the photo does not exist; `409 report_locked` once the council has started.
+
 **Photo URLs** are pre-signed and expire after `CIVICWATCH_MEDIA_URL_TTL_SECONDS` (default 5 minutes). Fetch the report again for fresh URLs. They are generated only for reports the caller may see.
 
 ### `POST /api/v1/issues/{issue_id}/photos`

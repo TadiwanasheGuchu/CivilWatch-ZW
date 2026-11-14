@@ -2,6 +2,7 @@ import { MapPinned } from "lucide-react";
 import Link from "next/link";
 
 import { AccountNav } from "@/features/authentication/account-nav";
+import { HeaderNav } from "@/features/navigation/header-nav";
 
 export function SiteHeader() {
   return (
@@ -16,7 +17,10 @@ export function SiteHeader() {
           </span>
           CivicWatch <span className="font-medium text-white/70">ZW</span>
         </Link>
-        <AccountNav />
+        <div className="flex items-center gap-2">
+          <HeaderNav />
+          <AccountNav />
+        </div>
       </div>
     </header>
   );

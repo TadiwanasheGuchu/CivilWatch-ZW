@@ -7,6 +7,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ApiError, errorMessage } from "@/lib/api-client";
 
+import { openDraftStore } from "@/features/reporting/draft-store";
+
 import { signOut } from "./api";
 import type { SessionData } from "./types";
 
@@ -14,18 +16,25 @@ import type { SessionData } from "./types";
  * After signing out we load the home page afresh rather than navigating in
  * the app: it discards every cached response from the old session, and
  * avoids protected pages reacting to the sign-out mid-navigation.
+ *
+ * Phones are often shared, so an unsent report draft (and its photos) is
+ * deleted from the device too.
  */
-function leaveSignedOut() {
-  window.location.replace("/");
+async function leaveSignedOut() {
+  try {
+    await (await openDraftStore()).clear();
+  } finally {
+    window.location.replace("/");
+  }
 }
 
 export function SignOutButton({ session }: { session: SessionData }) {
   const mutation = useMutation({
     mutationFn: () => signOut(session.csrf_token),
-    onSuccess: leaveSignedOut,
+    onSuccess: () => void leaveSignedOut(),
     onError: (error) => {
       // Already signed out on the server (expired or revoked): treat as done.
-      if (error instanceof ApiError && error.status === 401) leaveSignedOut();
+      if (error instanceof ApiError && error.status === 401) void leaveSignedOut();
     },
   });
   const showError = mutation.isError && !(mutation.error instanceof ApiError && mutation.error.status === 401);

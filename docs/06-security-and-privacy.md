@@ -81,6 +81,8 @@ Three independent layers; each would stop a cross-council read on its own.
 - Signing out reloads the home page, discarding every cached response; when a different user signs in on the same tab, cached data from the previous user is dropped.
 - Any 401 or CSRF rejection refreshes the session, so expired or revoked sessions are reflected immediately.
 - User-provided text is rendered as text by React, never as HTML.
+- **Drafts on the device**: unsent reports, including photos, are stored in the browser's IndexedDB and never leave the phone until sent. Signing out deletes them. Photos are re-encoded in the browser before upload, which also drops their EXIF data on most phones; the server strips metadata regardless.
+- Photo images are shown from short-lived signed URLs and are never passed through Next.js image optimisation, which could cache them.
 
 ## Privacy rules (from CLAUDE.md §8)
 

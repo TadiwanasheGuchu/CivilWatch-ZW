@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
 
 from app.api.deps import CurrentUser, DbDep, OptionalUser, SettingsDep, get_rate_limiter
 from app.api.v1.issue_presenters import IssuePresenter
@@ -172,3 +172,22 @@ def add_photo(
     # Read at most one byte past the limit, whatever the client claimed.
     data = file.file.read(settings.photo_max_upload_bytes + 1)
     return present.photo(photos.add_photo(user, issue_id, data))
+
+
+@router.delete(
+    "/{issue_id}/photos/{photo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a photo from your report while it awaits review",
+    responses={
+        404: {"description": "Not your report, or no such photo"},
+        409: {"description": "The council has started on the report"},
+    },
+)
+def remove_photo(
+    issue_id: uuid.UUID,
+    photo_id: uuid.UUID,
+    user: CurrentUser,
+    photos: Annotated[PhotoService, Depends(get_photo_service)],
+) -> Response:
+    photos.remove_photo(user, issue_id, photo_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

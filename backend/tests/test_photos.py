@@ -309,3 +309,52 @@ def test_signed_urls_expire(reporter) -> None:
     assert fetch(short_lived)[0] == 200
     time.sleep(2)
     assert fetch(short_lived)[0] == 403
+
+
+# --- Removing a photo ---------------------------------------------------------------------------
+
+
+def test_reporter_can_remove_a_photo_before_review(reporter) -> None:
+    client, session, issue = reporter
+    photo = upload(client, session, issue["id"], jpeg_with_gps()).json()
+    response = client.delete(
+        f"/api/v1/issues/{issue['id']}/photos/{photo['id']}", headers=csrf_headers(session)
+    )
+    assert response.status_code == 204
+    assert client.get(f"/api/v1/issues/{issue['id']}").json()["photos"] == []
+    # The stored objects are gone too.
+    assert fetch(photo["url"])[0] == 404
+
+
+def test_photo_removal_rules(world, make_client, reporter, owner_engine) -> None:
+    client, session, issue = reporter
+    photo = upload(client, session, issue["id"], jpeg_with_gps()).json()
+    url = f"/api/v1/issues/{issue['id']}/photos/{photo['id']}"
+
+    assert client.delete(url).status_code == 403  # CSRF
+    other, other_session = new_resident(make_client, "other@example.com")
+    assert other.delete(url, headers=csrf_headers(other_session)).status_code == 404
+    missing = f"/api/v1/issues/{issue['id']}/photos/{uuid.uuid4()}"
+    assert client.delete(missing, headers=csrf_headers(session)).status_code == 404
+
+    set_status(owner_engine, issue["id"], "UNDER_REVIEW")
+    locked = client.delete(url, headers=csrf_headers(session))
+    assert locked.status_code == 409
+    assert locked.json()["error"]["code"] == "report_locked"
+
+
+def test_rls_blocks_deleting_photos_of_reviewed_or_others_reports(
+    world, make_client, reporter, owner_engine
+) -> None:
+    client, session, issue = reporter
+    upload(client, session, issue["id"], jpeg_with_gps())
+    _, other_session = new_resident(make_client, "other@example.com")
+    with get_session_factory()() as db:
+        bind_rls_user(db, uuid.UUID(other_session["user"]["id"]))
+        assert db.execute(text("DELETE FROM issue_media")).rowcount == 0
+        db.rollback()
+    set_status(owner_engine, issue["id"], "UNDER_REVIEW")
+    with get_session_factory()() as db:
+        bind_rls_user(db, uuid.UUID(session["user"]["id"]))
+        assert db.execute(text("DELETE FROM issue_media")).rowcount == 0
+        db.rollback()

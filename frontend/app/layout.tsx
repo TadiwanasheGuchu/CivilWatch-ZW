@@ -3,6 +3,7 @@ import { Inter, Manrope } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { SiteHeader } from "@/components/site-header";
+import { BottomNav } from "@/features/navigation/bottom-nav";
 
 import "./globals.css";
 import { Providers } from "./providers";
@@ -39,7 +40,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </a>
         <Providers>
           <SiteHeader />
-          {children}
+          {/* Room for the phone bottom navigation. */}
+          <div className="pb-20 md:pb-0">{children}</div>
+          <BottomNav />
         </Providers>
       </body>
     </html>

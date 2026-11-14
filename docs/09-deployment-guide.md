@@ -51,7 +51,7 @@ cd backend && python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 cd backend && .venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --reload
 ```
 
-Frontend (Node 22):
+Frontend (Node 22). `npm run dev` and `npm run build` first copy MapLibre's worker into `public/maplibre/` (generated, not committed):
 
 ```bash
 cd frontend && npm install && npm run dev
@@ -91,6 +91,8 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_PHOTOS_PER_ISSUE` | `5` | Photos per report |
 | `CIVICWATCH_PHOTO_UPLOADS_PER_USER` | `60` | Uploads per user per window (`CIVICWATCH_PHOTO_UPLOAD_WINDOW_SECONDS`, 3600) |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000/api/v1` | API base URL baked into the frontend build |
+| `NEXT_PUBLIC_MAP_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Raster tile template. **Set a tile provider for production**: OpenStreetMap's public tile server forbids heavy app traffic |
+| `NEXT_PUBLIC_MAP_ATTRIBUTION` | OpenStreetMap contributors | Attribution required by the tile provider |
 
 ## Production
 

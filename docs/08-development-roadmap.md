@@ -21,7 +21,9 @@ Acceptance: users can authenticate and access authorised council workspaces; cro
 |---|---|---|
 | 2.1 | Categories, report submission API with location and council checks, own reports, public browsing of verified public reports, status history, RLS | **Done** (backend) |
 | 2.2 | Photo evidence: S3-compatible private storage, content validation, EXIF stripping, size limits, short-lived signed URLs | **Done** (backend) |
-| 2.3 | Mobile report form (category → description → photos → location → visibility → review) with offline drafts and map location; My reports; public browsing; resident bottom navigation; removing a mistaken photo | Next |
+| 2.3 | Mobile report form (category → description → photos → location → visibility → review) with offline drafts and map location; My reports; public browsing; resident bottom navigation; removing a mistaken photo | **Done** |
+
+Acceptance: residents can submit and track reports securely. **Met** — Milestone 2 is complete. Next: Milestone 3 (council operations).
 
 3. Council operations — dashboard, verification, moderation, departments, assignments, status history.
 4. Geographic intelligence — map explorer, spatial search, clustering, heatmaps, boundaries.
