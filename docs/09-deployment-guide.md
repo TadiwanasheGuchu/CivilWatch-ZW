@@ -37,7 +37,7 @@ Register an account through the API, then on the server:
 docker compose exec api python -m app.cli grant-platform-admin you@example.com
 ```
 
-`revoke-platform-admin` reverses it.
+`revoke-platform-admin` reverses it. Both are written to the audit log. There is intentionally no HTTP endpoint for this.
 
 ### Sample boundaries (demonstrations)
 
@@ -47,7 +47,6 @@ docker compose exec api python -m app.cli load-sample-boundaries --create-missin
 
 This gives Harare, Bulawayo, Mutare, Gweru, Masvingo and Kwekwe **sample** octagon boundaries (creating those councils if needed). They are labelled as samples everywhere; replace them with official GeoJSON through `PUT /api/v1/councils/{id}/boundary`.
 
-`revoke-platform-admin` reverses a grant. Both are written to the audit log. There is intentionally no HTTP endpoint for this.
 
 ## Running without Docker
 
