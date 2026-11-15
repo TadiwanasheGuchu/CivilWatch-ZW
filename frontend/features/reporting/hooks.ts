@@ -34,7 +34,7 @@ export function useCouncilOptions() {
   return useQuery({
     queryKey: reportKeys.councils,
     queryFn: async ({ signal }) => {
-      const councils = (await fetchCouncilDirectory(signal)).items;
+      const councils = await fetchCouncilDirectory(signal);
       writeReference("councils", councils);
       return councils;
     },

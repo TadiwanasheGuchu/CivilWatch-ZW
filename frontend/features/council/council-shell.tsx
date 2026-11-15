@@ -17,7 +17,7 @@ import { ROLE_LABELS } from "./labels";
 import type { Workspace } from "./types";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
-type Tab = "overview" | "reports" | "work" | "departments" | "staff" | "audit";
+type Tab = "overview" | "reports" | "work" | "departments" | "staff" | "audit" | "boundary";
 
 interface CouncilShellProps {
   councilId: string;
@@ -58,6 +58,8 @@ function CouncilWorkspace({ councilId, tab, children, session }: CouncilShellPro
     { id: "departments", label: "Departments", href: `${root}/departments`, visible: can("issues.view") },
     { id: "staff", label: "Staff", href: `${root}/staff`, visible: can("members.view") },
     { id: "audit", label: "Audit log", href: `${root}/audit`, visible: can("audit.view") },
+    // Boundaries are set by platform administrators only (the API enforces this).
+    { id: "boundary", label: "Boundary", href: `${root}/boundary`, visible: session.user.is_platform_admin },
   ];
 
   return (

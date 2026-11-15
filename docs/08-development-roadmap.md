@@ -27,7 +27,9 @@ Acceptance: council staff can manage reports. **Met** — Milestone 3 is complet
 | Stage | Scope | Status |
 |---|---|---|
 | 4.1 | Boundaries (sample loader, upload, validation), locate council, database clustering, public and staff nearby search | **Done** (backend) |
-| 4.2 | Explore map (clusters, heatmap, boundaries, filters, preview card), "near me", automatic council choice and similar-report warning in the report form, staff queue map and duplicate suggestions, boundary upload screen | Next |
+| 4.2 | Explore map (clusters, heatmap, boundaries, filters, preview card), "near me", automatic council choice and similar-report warning in the report form, staff queue map and duplicate suggestions, boundary upload screen | **Done** |
+
+Acceptance: users can explore geographically relevant reports. **Met** — Milestone 4 is complete. Next: Milestone 5 (transparency and analytics).
 
 ## Later milestones
 

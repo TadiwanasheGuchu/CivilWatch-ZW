@@ -21,6 +21,8 @@ export interface ReportDraft {
   description: string;
   photos: DraftPhoto[];
   councilId: string | null;
+  /** True while the council was chosen automatically from the pin, so a moved pin may update it. */
+  councilAutoSelected?: boolean;
   latitude: number | null;
   longitude: number | null;
   locationDescription: string;

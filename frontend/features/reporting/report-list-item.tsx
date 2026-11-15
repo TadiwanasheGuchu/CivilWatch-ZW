@@ -6,7 +6,7 @@ import { StatusBadge } from "./status-badge";
 import type { OwnIssue, PublicIssue } from "./types";
 
 /** One report in a list. Thumbnails are signed, short-lived URLs from the API. */
-export function ReportListItem({ issue }: { issue: PublicIssue | OwnIssue }) {
+export function ReportListItem({ issue, detail }: { issue: PublicIssue | OwnIssue; detail?: string }) {
   const isPrivate = "visibility" in issue && issue.visibility === "PRIVATE";
   return (
     <li>
@@ -36,6 +36,7 @@ export function ReportListItem({ issue }: { issue: PublicIssue | OwnIssue }) {
           <span className="mt-0.5 block text-xs text-slate tabular">
             {issue.reference} · {formatDate(issue.created_at)}
           </span>
+          {detail ? <span className="mt-0.5 block text-xs font-medium text-teal">{detail}</span> : null}
         </span>
         <ChevronRight aria-hidden="true" className="mt-6 size-5 shrink-0 text-slate" />
       </Link>

@@ -16,6 +16,7 @@ import { errorMessage } from "@/lib/api-client";
 
 import { QUEUE_PAGE_SIZE } from "./api";
 import { useDepartments, useQueue } from "./hooks";
+import { QueueMap } from "./queue-map";
 import { StaffReportRow } from "./staff-report-row";
 import { groupForStatuses, OPEN_STATUSES, STATUS_GROUPS } from "./status-groups";
 import type { QueueFilters } from "./types";
@@ -53,6 +54,7 @@ function Queue({ councilId }: { councilId: string }) {
   const ids = { status: useId(), category: useId(), department: useId(), sort: useId(), search: useId() };
   const categories = useCategories();
   const departments = useDepartments(councilId);
+  const showMap = params.get("view") === "map";
   const { data, isPending, isError, error, refetch } = useQueue(councilId, filters, page);
 
   function update(patch: Record<string, string | undefined>) {
@@ -143,7 +145,27 @@ function Queue({ councilId }: { councilId: string }) {
         </div>
       </div>
 
-      {isPending ? (
+      <div role="group" aria-label="Show reports as" className="inline-flex rounded-[var(--radius-control)] border border-line bg-surface p-0.5">
+        {([["list", "List"], ["map", "Map"]] as const).map(([id, text]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={(id === "map") === showMap}
+            onClick={() => update({ view: id === "map" ? "map" : undefined, page: undefined })}
+            className={
+              (id === "map") === showMap
+                ? "min-h-10 rounded-[calc(var(--radius-control)-2px)] bg-navy px-3 text-sm font-medium text-white"
+                : "min-h-10 rounded-[calc(var(--radius-control)-2px)] px-3 text-sm font-medium text-navy hover:bg-mist"
+            }
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+
+      {showMap ? (
+        <QueueMap councilId={councilId} filters={filters} />
+      ) : isPending ? (
         <LoadingRows label="Loading reports" rows={5} />
       ) : isError ? (
         <LoadError message={errorMessage(error)} onRetry={() => void refetch()} />

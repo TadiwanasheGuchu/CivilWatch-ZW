@@ -82,6 +82,15 @@ Tabs (scrolling sideways on narrow phones): **Overview** (live counts by stage; 
 
 The **review page** puts the "Next step" and assignment panels right after the report summary on phones, and in a sticky sidebar on desktop. It offers exactly the actions the API returns in `available_transitions`; choosing one opens a short confirmation with a "Message to the reporter" box (marked required when it is) and, for duplicates, the original's reference. Staff notes are labelled as staff-only. Repair photos open the camera directly.
 
+### Map explorer (stage 4.2)
+
+- **Explore** offers List and Map views over the same filters; the list stays the default, so the map library downloads only on request. "Near me" asks for location once and lists verified reports within 2 km (list view) or centres the map (map view).
+- **Markers** are buttons: navy circles with a count for groups (tap to zoom in), small teal dots for single reports (tap to preview). A Markers/Heatmap toggle switches to a teal → amber → red heatmap. The live count ("6 reports in view") is announced politely.
+- **Boundaries**: thin navy outlines; **dashed outlines are sample boundaries**, explained in a caption under every map that shows them.
+- **Preview card** below the map (never over it): status, title, category, council, date, thumbnail and "View report".
+- **Report form**: the council is chosen from the pin where a boundary covers it (with "(based on a sample boundary; check it is right)" when applicable), never overriding a council the person picked; a note explains when the pin is outside their chosen council. "Already reported nearby?" lists up to three verified reports of the same kind within 150 m, opening in a new tab so the draft stays put.
+- **Staff**: the Reports tab has a List/Map toggle (all of the council's reports, framed to its boundary; tapping a report opens it). The review page shows "Possible duplicates nearby" (within 200 m) while a report is being reviewed. Platform administrators get a Boundary tab to upload GeoJSON, with the result (area, points, overlaps) or a plain explanation of what is wrong.
+
 ### Maps
 
 Raster tiles (OpenStreetMap by default) with attribution, no rotation or tilt, zoom buttons, and cooperative gestures on read-only maps so page scrolling is not hijacked. The map library is only downloaded when a map is shown.

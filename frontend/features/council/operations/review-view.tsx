@@ -16,6 +16,7 @@ import { directionsUrl } from "./api";
 import { AssignPanel } from "./assign-panel";
 import { useStaffIssue } from "./hooks";
 import { InternalNotes } from "./internal-notes";
+import { NearbyPanel } from "./nearby-panel";
 import { PhotoGrid, RepairPhotoUpload } from "./repair-photos";
 import { ReviewActions } from "./review-actions";
 import type { StaffIssueDetail } from "./types";
@@ -51,6 +52,9 @@ function Review({ councilId, issueId, csrfToken }: { councilId: string; issueId:
           <ReviewActions key={issue.status} councilId={councilId} issue={issue} csrfToken={csrfToken} />
           {issue.can_assign ? (
             <AssignPanel key={issue.assignment?.assigned_at ?? "none"} councilId={councilId} issue={issue} csrfToken={csrfToken} />
+          ) : null}
+          {["SUBMITTED", "UNDER_REVIEW", "NEEDS_INFORMATION"].includes(issue.status) ? (
+            <NearbyPanel councilId={councilId} issueId={issue.id} />
           ) : null}
           {issue.available_transitions.length === 0 && !issue.can_assign ? (
             <p className="rounded-[var(--radius-panel)] border border-line bg-surface p-4 text-sm text-slate">

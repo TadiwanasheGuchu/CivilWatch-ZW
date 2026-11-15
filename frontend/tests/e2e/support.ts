@@ -155,3 +155,18 @@ export async function closeExtraContexts() {
 export function useViewportFor(viewport: { width: number; height: number } | null) {
   browserViewport = viewport;
 }
+
+/** Load the bundled SAMPLE boundaries (operator command), creating the sample councils. */
+export function loadSampleBoundaries() {
+  execFileSync(BACKEND_PYTHON, ["-m", "app.cli", "load-sample-boundaries", "--create-missing"], {
+    cwd: BACKEND_DIR,
+    stdio: "pipe",
+  });
+}
+
+export function squareBoundary(lat: number, lon: number, half: number) {
+  return {
+    type: "Polygon",
+    coordinates: [[[lon - half, lat - half], [lon + half, lat - half], [lon + half, lat + half], [lon - half, lat + half], [lon - half, lat - half]]],
+  };
+}

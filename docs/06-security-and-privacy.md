@@ -88,6 +88,8 @@ Three independent layers; each would stop a cross-council read on its own.
 - Public map data and nearby search include only published public reports (explicit filter plus RLS); clusters carry no titles or reporter information, and single-report clusters only an ID and status. Staff map and nearby endpoints are limited to the caller's council.
 - Boundary changes are restricted to platform administrators, validated in PostGIS, and audited with area, vertex count and overlaps.
 
+- **Location from the browser** ("Use my current location", "Near me") is requested only when the person taps the button. It is sent to the API only as query parameters for the lookup and is not stored.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

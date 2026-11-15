@@ -24,8 +24,17 @@ export function fetchCategories(signal?: AbortSignal) {
   return apiGet<Category[]>("/categories", { signal });
 }
 
-export function fetchCouncilDirectory(signal?: AbortSignal) {
-  return apiGet<Page<{ id: string; slug: string; name: string }>>("/councils?page_size=100", { signal });
+type CouncilOption = { id: string; slug: string; name: string };
+
+/** Every active council (the API pages at 100; Zimbabwe has about 92 local authorities). */
+export async function fetchCouncilDirectory(signal?: AbortSignal): Promise<CouncilOption[]> {
+  const councils: CouncilOption[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const result = await apiGet<Page<CouncilOption>>(`/councils?page=${page}&page_size=100`, { signal });
+    councils.push(...result.items);
+    if (councils.length >= result.total || result.items.length === 0) break;
+  }
+  return councils;
 }
 
 export function submitReport(report: NewReport, csrfToken: string) {

@@ -1,15 +1,9 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
-
-import * as maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
-import { DEFAULT_CENTER, DEFAULT_ZOOM, PIN_ZOOM, TILE_ATTRIBUTION, TILE_URL } from "./config";
-
-// Served from public/ (copied by scripts/copy-map-worker.mjs), because the
-// bundler moves MapLibre away from the worker file it expects beside it.
-maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+import { DEFAULT_CENTER, DEFAULT_ZOOM, PIN_ZOOM } from "./config";
+import { baseStyle, maplibregl } from "./maplibre";
 
 export interface LocationMapProps {
   latitude: number | null;
@@ -46,13 +40,7 @@ export default function LocationMap({ latitude, longitude, onChange, onError, in
     try {
       instance = new maplibregl.Map({
         container: container.current,
-        style: {
-          version: 8,
-          sources: {
-            base: { type: "raster", tiles: [TILE_URL], tileSize: 256, maxzoom: 19, attribution: TILE_ATTRIBUTION },
-          },
-          layers: [{ id: "base", type: "raster", source: "base" }],
-        },
+        style: baseStyle(),
         center: hasPin ? [longitude, latitude] : DEFAULT_CENTER,
         zoom: hasPin ? PIN_ZOOM : DEFAULT_ZOOM,
         interactive: true,
@@ -117,7 +105,7 @@ export default function LocationMap({ latitude, longitude, onChange, onError, in
     <div className="relative">
       <div ref={container} role="region" aria-label={label} className="h-64 w-full sm:h-80" />
       {tilesUnavailable ? (
-        <p className="pointer-events-none absolute inset-x-2 bottom-2 rounded bg-surface/95 px-2 py-1 text-xs text-navy-soft">
+        <p className="pointer-events-none absolute top-2 right-12 left-2 rounded bg-surface/95 px-2 py-1 text-xs text-navy-soft">
           Map images could not load on this connection.
           {interactive ? " You can still tap to place the pin or use your location." : ""}
         </p>

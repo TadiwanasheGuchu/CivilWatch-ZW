@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { LazyLocationMap } from "@/features/maps/lazy-location-map";
 
 import { useCouncilOptions } from "../hooks";
+import { LocationInsights } from "./location-insights";
 import type { StepProps } from "./step-props";
 
 const GEO_ERRORS: Record<number, string> = {
@@ -48,20 +49,6 @@ export function LocationStep({ draft, update, errors }: StepProps) {
 
   return (
     <div className="space-y-5">
-      <Field
-        label="Council"
-        hint="The council responsible for where the problem is."
-        error={errors.councilId}
-      >
-        <Select value={draft.councilId ?? ""} onChange={(event) => update({ councilId: event.target.value || null })}>
-          <option value="">Choose a council</option>
-          {(councils.data ?? []).map((council) => (
-            <option key={council.id} value={council.id}>
-              {council.name}
-            </option>
-          ))}
-        </Select>
-      </Field>
 
       <div className="space-y-2">
         <p className="text-sm font-medium">Where is the problem?</p>
@@ -97,6 +84,26 @@ export function LocationStep({ draft, update, errors }: StepProps) {
         </p>
         {errors.latitude ? <p className="text-sm font-medium text-red-text">{errors.latitude}</p> : null}
       </div>
+
+      <Field
+        label="Council"
+        hint="Chosen from the pin where council boundaries are known. You can change it."
+        error={errors.councilId}
+      >
+        <Select
+          value={draft.councilId ?? ""}
+          onChange={(event) => update({ councilId: event.target.value || null, councilAutoSelected: false })}
+        >
+          <option value="">Choose a council</option>
+          {(councils.data ?? []).map((council) => (
+            <option key={council.id} value={council.id}>
+              {council.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <LocationInsights draft={draft} update={update} />
 
       <Field
         label="Landmark or address (optional)"
