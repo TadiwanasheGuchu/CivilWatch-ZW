@@ -99,6 +99,13 @@ The **review page** puts the "Next step" and assignment panels right after the r
 - **Was the problem fixed?** appears on the reporter's resolved report: two large Yes/No buttons, then an optional comment ("What is still wrong?" for No). Once answered it shows a thank-you with the answer. Staff see "The reporter says it is (not) fixed" at the top of the review page.
 - On phones narrower than 400 px the account link shows only its icon, so the header fits with the bell.
 
+### Performance and council progress (stage 5.3)
+
+- The council workspace has a **Performance** tab (all staff). A period picker (30 days, 90 days, 12 months) sits above five headline figures in a two-column grid on phones and one row on desktops, then panels for typical times, residents' answers, categories and department workload. Category and department rows show the number with a thin teal bar under it; the number is the content and the bar is hidden from screen readers. No charts beyond that.
+- Administrators and managers also see **Export reports**: two date fields (default the last 30 days), a "Download CSV" button and a note that exports have no reporter details and are audited.
+- **Council progress** (`/transparency`, linked from the home page as "See how councils are doing") has the same headline-figure style, a council picker, a per-council list and categories, and says plainly that only verified public reports are counted.
+- Figures use Manrope with tabular numerals; "No data yet" replaces empty medians rather than showing zero.
+
 ### Maps
 
 Raster tiles (OpenStreetMap by default) with attribution, no rotation or tilt, zoom buttons, and cooperative gestures on read-only maps so page scrolling is not hijacked. The map library is only downloaded when a map is shown.

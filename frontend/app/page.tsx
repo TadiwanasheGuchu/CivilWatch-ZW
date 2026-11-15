@@ -48,6 +48,11 @@ export default function HomePage() {
                 Explore reports
               </Link>
             </div>
+            <p className="mt-3 text-sm">
+              <Link href="/transparency" className="inline-flex min-h-11 items-center font-medium text-teal underline underline-offset-2">
+                See how councils are doing
+              </Link>
+            </p>
           </div>
 
           <RecentReports />

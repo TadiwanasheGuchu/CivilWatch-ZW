@@ -67,6 +67,7 @@ Server components by default; client components only where interactivity or TanS
 | Boundaries validated in PostGIS (`ST_IsValid`, vertex limit, inside the service area) and simplified to ~100 m for display | Adopted (stage 4.1) |
 | Map markers are HTML buttons over a raster map (no font glyph server needed; keyboard and screen-reader accessible); the heatmap is a MapLibre layer on the same cluster data | Adopted (stage 4.2) |
 | Notifications written in the same transaction as the change that causes them; the table doubles as the outbox for future external channels | Adopted (stage 5.1) |
+| Analytics computed on request with SQL aggregates (`percentile_cont` medians over `issue_status_history`) instead of a separate warehouse or pre-computed tables; public statistics cached by browsers and proxies for 5 minutes | Adopted (stage 5.3) |
 | Email delivered from that outbox by a Celery beat task every minute, over SMTP, as a separate `civicwatch_worker` database role that can read only what emailing needs; rows claimed with `FOR UPDATE SKIP LOCKED` so several workers never send twice | Adopted (stage 5.2) |
 | Council screens under `/council/[id]/…` (overview, reports, review, my work, departments, staff, audit), in `features/council/operations/` | Adopted (stage 3.2) |
 | Layered packages (`api/`, `services/`, `repositories/`, `models/`, `schemas/`) with one file per domain, e.g. `services/auth.py` | Adopted; `modules/` reserved for a domain that outgrows this |

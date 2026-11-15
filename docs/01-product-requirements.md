@@ -83,6 +83,13 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 - Undelivered emails are retried up to 5 times; notifications older than 48 hours are never emailed, so an outage does not end in a flood of stale messages.
 - Emails contain only what the in-app notification shows the same person.
 
+## Performance, transparency and exports (stage 5.3)
+
+- **Council performance** (all council staff): for the last 30 days, 90 days or 12 months — reports received and fixed, what is open today, waiting for review and waiting for a team; median times from receipt to first response, verification and fix; reports by category; each department's current workload and oldest open job; and the share of "Was it fixed?" answers that said yes. Figures are about the council and its departments, never individual staff.
+- **Council progress** (public, `/transparency`): verified, open and fixed counts, the median time from verification to fix, and breakdowns by council and category. It counts **only public reports a council has verified** — the reports anyone can already explore. Private and unverified reports are never counted, so the page cannot reveal that they exist.
+- **CSV export** (council administrators and department managers): reports received between two dates, at most a year and 10,000 rows: reference, dates, category, status, visibility, title, place, coordinates, department, verified and fixed times. **No reporter names or contact details.** Each export is recorded in the audit log.
+- Default chosen (change if needed): every staff member may view the figures because they summarise reports staff can already read; exporting copies data out of the system, so it is limited to administrators and managers.
+
 ## Open questions (need product decisions)
 
 - **SMS or WhatsApp:** whether to add either on top of email. The same outbox and worker pattern applies once a provider is chosen.

@@ -106,6 +106,8 @@ def test_member_workspace_lists_role_and_permissions(
         "issues.assign",
         "issues.work",
         "issues.close",
+        "analytics.view",
+        "reports.export",
     }
 
 

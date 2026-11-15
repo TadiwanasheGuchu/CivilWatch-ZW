@@ -17,7 +17,7 @@ import { ROLE_LABELS } from "./labels";
 import type { Workspace } from "./types";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
-type Tab = "overview" | "reports" | "work" | "departments" | "staff" | "audit" | "boundary";
+type Tab = "overview" | "reports" | "work" | "performance" | "departments" | "staff" | "audit" | "boundary";
 
 interface CouncilShellProps {
   councilId: string;
@@ -55,6 +55,7 @@ function CouncilWorkspace({ councilId, tab, children, session }: CouncilShellPro
     { id: "overview", label: "Overview", href: root, visible: can("issues.view") },
     { id: "reports", label: "Reports", href: `${root}/reports`, visible: can("issues.view") },
     { id: "work", label: "My work", href: `${root}/work`, visible: can("issues.work") },
+    { id: "performance", label: "Performance", href: `${root}/performance`, visible: can("analytics.view") },
     { id: "departments", label: "Departments", href: `${root}/departments`, visible: can("issues.view") },
     { id: "staff", label: "Staff", href: `${root}/staff`, visible: can("members.view") },
     { id: "audit", label: "Audit log", href: `${root}/audit`, visible: can("audit.view") },

@@ -102,6 +102,13 @@ Three independent layers; each would stop a cross-council read on its own.
 - SMTP uses STARTTLS (or implicit TLS) with certificate verification by default; the password is a secret setting and is never logged. Delivery errors are stored truncated for operators, without message content.
 - People can opt out; deactivated accounts receive nothing.
 
+## Analytics and exports (stage 5.3)
+
+- **Public statistics count only public, verified reports** — an explicit filter in the query, with RLS applying the same rule underneath. A test creates private and unverified reports and checks that every public figure stays at zero.
+- Staff figures are scoped to the council in the URL, after the membership check; another council's staff and platform administrators without a membership are refused, and other councils' reports are never counted.
+- **Exports** need `reports.export`, contain no reporter identity or contact details and no descriptions or staff notes, are limited to a year and 10,000 rows, are never cached, and are audited with the range and row count.
+- **CSV injection**: resident-written text that a spreadsheet would treat as a formula is prefixed with `'`.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

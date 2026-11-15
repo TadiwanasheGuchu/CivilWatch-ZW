@@ -15,7 +15,9 @@ export type Permission =
   | "issues.review"
   | "issues.assign"
   | "issues.work"
-  | "issues.close";
+  | "issues.close"
+  | "analytics.view"
+  | "reports.export";
 
 export interface CouncilSummary {
   id: string;

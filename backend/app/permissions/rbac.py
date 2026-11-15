@@ -21,10 +21,20 @@ class Permission(StrEnum):
     ISSUES_ASSIGN = "issues.assign"
     ISSUES_WORK = "issues.work"
     ISSUES_CLOSE = "issues.close"
+    ANALYTICS_VIEW = "analytics.view"
+    REPORTS_EXPORT = "reports.export"
 
 
+# Every staff member may see the council's performance figures: they are
+# aggregates of reports staff can already read. Exports copy data out of the
+# system, so only administrators and department managers may make them.
 _STAFF_BASELINE = frozenset(
-    {Permission.WORKSPACE_VIEW, Permission.MEMBERS_VIEW, Permission.ISSUES_VIEW}
+    {
+        Permission.WORKSPACE_VIEW,
+        Permission.MEMBERS_VIEW,
+        Permission.ISSUES_VIEW,
+        Permission.ANALYTICS_VIEW,
+    }
 )
 
 # Agreed before Milestone 3: verification officers review; department
@@ -41,9 +51,15 @@ ROLE_PERMISSIONS: dict[CouncilRole, frozenset[Permission]] = {
         Permission.ISSUES_ASSIGN,
         Permission.ISSUES_WORK,
         Permission.ISSUES_CLOSE,
+        Permission.REPORTS_EXPORT,
     },
     CouncilRole.DEPARTMENT_MANAGER: _STAFF_BASELINE
-    | {Permission.ISSUES_ASSIGN, Permission.ISSUES_WORK, Permission.ISSUES_CLOSE},
+    | {
+        Permission.ISSUES_ASSIGN,
+        Permission.ISSUES_WORK,
+        Permission.ISSUES_CLOSE,
+        Permission.REPORTS_EXPORT,
+    },
     CouncilRole.VERIFICATION_OFFICER: _STAFF_BASELINE | {Permission.ISSUES_REVIEW},
     CouncilRole.MAINTENANCE_OFFICER: _STAFF_BASELINE | {Permission.ISSUES_WORK},
 }

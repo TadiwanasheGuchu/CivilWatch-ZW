@@ -269,6 +269,13 @@ Staff (`issues.view`). As the public endpoint, but all of the council's reports,
 ### `GET /api/v1/councils/{council_id}/issues/{issue_id}/nearby?radius_m=&limit=`
 Staff. Other reports in the same council within `radius_m` (25–2000, default 200), any status, closest first: `StaffIssueSummary` plus `distance_m`. Helps verification officers spot duplicates.
 
-## Planned endpoint groups
+## Analytics and exports (stage 5.3)
 
-`/analytics` — each documented here when implemented.
+### `GET /api/v1/analytics/public?council_id=`
+Public, no sign-in. `200 { published, open, fixed, median_days_to_fix, categories: [{ code, name, received, fixed }], councils: [{ id, slug, name, published, open, fixed, median_days_to_fix }] }`. Counts only `PUBLIC` reports in published statuses of active councils; `received` in categories means published. `median_days_to_fix` runs from first verification to first resolution and is `null` with no data. `Cache-Control: public, max-age=300`.
+
+### `GET /api/v1/councils/{council_id}/analytics/performance?days=90`
+`analytics.view` (all council staff). `days` is 30, 90 or 365 (otherwise `422`). `200 { period_days, since, received, open_now, awaiting_review, awaiting_assignment, fixed_in_period, median_hours_to_first_response, median_hours_to_verify, median_hours_to_fix, categories: [...], departments: [{ id, name, assigned, in_progress, oldest_open_days }], feedback_responses, feedback_fixed }`. Medians run from receipt, over reports received in the period; the open counts and department workload are as of now.
+
+### `GET /api/v1/councils/{council_id}/reports/export?from=YYYY-MM-DD&to=YYYY-MM-DD`
+`reports.export` (council administrators and department managers). Reports received between the dates (inclusive, UTC) as `text/csv; charset=utf-8` with a byte-order mark, `Content-Disposition: attachment` and `Cache-Control: no-store`. Columns: `reference, received_at_utc, category, status, visibility, title, location_description, latitude, longitude, department, verified_at_utc, fixed_at_utc`. Text cells starting with `= + - @`, tab or carriage return are prefixed with `'`. `422` if `to` is before `from`, the range is over a year, or it holds more than 10,000 reports. Audited as `reports.exported` with the range and row count.

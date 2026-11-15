@@ -37,8 +37,10 @@ Acceptance: users can explore geographically relevant reports. **Met** — Miles
 |---|---|---|
 | 5.1 | In-app notifications (bell, list, read state) for reporters and staff; "Was it fixed?" feedback | **Done** |
 | 5.2 | Email notifications (outbox delivery by the worker, opt-out on the account page, Mailpit locally) | **Done** |
-| 5.3 | Council performance dashboard, public transparency page with privacy-safe statistics, CSV exports | Next |
+| 5.3 | Council performance dashboard, public council progress page with privacy-safe statistics, audited CSV exports | **Done** |
 | — | SMS / WhatsApp delivery | Waiting for a decision on channels and providers |
+
+Acceptance: end-to-end report tracking and analytics work. **Met** — Milestone 5 is complete. Next: Milestone 6 (production readiness).
 
 ## Later milestones
 
