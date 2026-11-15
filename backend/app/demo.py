@@ -180,8 +180,16 @@ class CouncilCrew:
 
 
 class DemoSeeder:
-    def __init__(self, session_factory: Callable[[], Session] | None = None) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], Session] | None = None,
+        *,
+        shared_password: str | None = None,
+    ) -> None:
+        """`shared_password`, if given, is used for every sample account except the
+        platform administrator, which always gets a random password nobody is shown."""
         self.session_factory = session_factory or get_session_factory()
+        self.shared_password = shared_password
         self.settings = get_settings()
         self.accounts: list[Account] = []
 
@@ -204,7 +212,12 @@ class DemoSeeder:
     def create_account(
         self, email: str, full_name: str, *, platform_admin: bool = False
     ) -> Account:
-        account = Account(email, full_name, secrets.token_urlsafe(12))
+        password = (
+            self.shared_password
+            if self.shared_password and not platform_admin
+            else secrets.token_urlsafe(16)
+        )
+        account = Account(email, full_name, password)
         with self.acting_as(None) as db:
             user = User(
                 email=email,

@@ -106,6 +106,7 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_STORAGE_REGION` | `us-east-1` | |
 | `CIVICWATCH_MEDIA_URL_TTL_SECONDS` | `300` | Lifetime of signed photo URLs (30–3600) |
 | `CIVICWATCH_PUBLIC_READS_PER_IP` | `600` | Requests per IP per window to the expensive public endpoints (`CIVICWATCH_PUBLIC_READ_WINDOW_SECONDS`, 300) |
+| `CIVICWATCH_PREPARE_DATABASE_ON_START` / `CIVICWATCH_SEED_DEMO_ON_START` | `false` | Hosts without a release step: create roles and migrate, and seed sample data once (`DEMO_ACCOUNT_PASSWORD` required), before serving |
 | `CIVICWATCH_EXPORTS_PER_USER` | `20` | CSV exports per user per window (`CIVICWATCH_EXPORT_WINDOW_SECONDS`, 3600) |
 | `CIVICWATCH_MAX_REQUEST_BYTES` / `CIVICWATCH_MAX_BOUNDARY_REQUEST_BYTES` | `1048576` / `8388608` | Largest request body; photo uploads use `PHOTO_MAX_UPLOAD_BYTES` |
 | `CIVICWATCH_SMTP_HOST` | unset | SMTP server; unset disables email (in-app notifications still work) |
@@ -122,7 +123,85 @@ cd frontend && npm install && npm run dev
 | `NEXT_PUBLIC_MAP_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Raster tile template. **Set a tile provider for production**: OpenStreetMap's public tile server forbids heavy app traffic |
 | `NEXT_PUBLIC_MAP_ATTRIBUTION` | OpenStreetMap contributors | Attribution required by the tile provider |
 | `NEXT_PUBLIC_MEDIA_ORIGINS` | `http://localhost:9000 http://127.0.0.1:9000` | Space-separated origins photos are served from (the storage public endpoint); used by the Content-Security-Policy |
+| `API_PROXY_TARGET` | unset | Server-side only: when set, `/api/*` is forwarded to this API address; use with `NEXT_PUBLIC_API_BASE_URL=/api/v1` |
 | `NEXT_PUBLIC_DEMO_MODE` | unset | `true` shows the "Demonstration site — sample data" banner on every page |
+
+## Free demo hosting
+
+A public demonstration on free tiers, with no card needed. Each free service has limits (below), so this is for showing the product, not for real councils.
+
+| Part | Service (free tier) | Notes |
+|---|---|---|
+| Web app | Vercel (Hobby) | Serves the Next.js app and forwards `/api/*` to the API, so the browser sees one site |
+| API | Render (Free web service, Docker) | Sleeps after 15 minutes idle; the first request then takes about a minute |
+| Database | Neon (Free) with PostGIS | Suspends when idle and wakes in about a second |
+| Cache and rate limits | Upstash Redis (Free) | |
+| Photos | Backblaze B2 (10 GB free), **private** bucket | Browsers get 5-minute signed links |
+
+Not included on the free plan: **email** (needs a background worker, which Render's free plan does not have; in-app notifications still work) and the hourly session clean-up.
+
+### 1. Database — Neon
+
+1. Create a project (region: Frankfurt, `aws-eu-central-1`, close to Render's Frankfurt region).
+2. In the SQL Editor run `CREATE EXTENSION IF NOT EXISTS postgis;` (the migrations also do this, but this confirms PostGIS is available).
+3. Copy the connection string for the owner role (`neondb_owner`). Use the **direct** connection, not the pooled one. This is `CIVICWATCH_MIGRATION_DATABASE_URL`.
+4. Choose a long random password for the API's role, and write the API's URL as the same string with `civicwatch_app:<that password>` in place of the owner's name and password. This is `CIVICWATCH_DATABASE_URL`. The API creates the role itself on first start (`python -m app.cli prepare-database`).
+
+### 2. Redis — Upstash
+
+Create a Redis database (region: Frankfurt) and copy its `rediss://default:…@…:6379` URL. This is `CIVICWATCH_REDIS_URL`.
+
+### 3. Photos — Backblaze B2
+
+1. Create a bucket with **Files in bucket: Private**.
+2. Create an application key limited to that bucket, with read and write access.
+3. From the bucket page, note the S3 endpoint (e.g. `s3.us-west-004.backblazeb2.com`). The region is the middle part (`us-west-004`).
+
+### 4. API — Render
+
+1. New → **Blueprint**, pick this repository and branch; Render reads `render.yaml`.
+2. Fill in the values it asks for:
+   - `DEMO_ACCOUNT_PASSWORD`: the password for the sample accounts (at least 10 characters).
+   - The two database URLs and the Redis URL.
+   - `CIVICWATCH_CORS_ORIGINS` and `CIVICWATCH_PUBLIC_WEB_URL`: your Vercel address (step 5). You can fill in the expected address now and correct it later.
+   - The storage values: endpoint `https://s3.<region>.backblazeb2.com`, the region, bucket, key ID and key.
+3. Deploy. On start the service creates the database roles, applies migrations and, once only, adds the labelled sample data. Check `https://<service>.onrender.com/api/v1/health/ready`.
+
+### 5. Web app — Vercel
+
+1. Add New → Project, import the repository, set **Root Directory** to `frontend`.
+2. Environment variables:
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | `/api/v1` |
+| `API_PROXY_TARGET` | `https://<service>.onrender.com` |
+| `NEXT_PUBLIC_MEDIA_ORIGINS` | `https://s3.<region>.backblazeb2.com` |
+| `NEXT_PUBLIC_DEMO_MODE` | `true` |
+
+3. Deploy, then make sure Render's `CIVICWATCH_CORS_ORIGINS` and `CIVICWATCH_PUBLIC_WEB_URL` match the production address Vercel gives you (e.g. `https://civicwatch-zw.vercel.app`). Preview deployments use other addresses and will be refused by the API.
+
+### Using the demo
+
+Sign in with any sample account using `DEMO_ACCOUNT_PASSWORD`:
+
+| Account | What you can see |
+|---|---|
+| `demo.resident1@example.com` (also `2`, `3`) | My reports, the report form, notifications, "Was it fixed?" |
+| `demo.harare.admin@example.com` | The whole Harare workspace: queue, review, assignment, performance, export, staff, audit log |
+| `demo.harare.verifier@example.com` | Reviewing and verifying reports |
+| `demo.harare.roads.manager@example.com` | Assigning and closing Roads work |
+| `demo.harare.officer@example.com` | My work: starting and resolving jobs with repair photos |
+| The same four for `bulawayo` | Bulawayo City Council |
+
+The sample platform administrator gets a random password that is never shown, so nobody can create councils or appoint staff on the public demo. To administer it yourself, register your own account and grant it with the operator command from a machine that can reach the database (`CIVICWATCH_MIGRATION_DATABASE_URL` set; Render's free plan has no shell).
+
+### Limits and trade-offs
+
+- The first visit after 15 idle minutes waits for Render to wake (about a minute).
+- Anyone you give the demo password to can change the sample data. To reset it, delete and recreate the Neon branch, then restart the Render service: it seeds again.
+- Render's address is public, so a client could send its own `X-Forwarded-For` straight to it to dodge per-IP rate limits. Acceptable for a demo; the paid stack (below) only exposes Caddy.
+- The map uses OpenStreetMap's public tiles, which allow light use like a demo but not production traffic.
 
 ## Production
 

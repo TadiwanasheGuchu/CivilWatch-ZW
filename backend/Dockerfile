@@ -15,7 +15,7 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /app app
 COPY requirements.lock ./
 RUN pip install -r requirements.lock
 
-COPY pyproject.toml alembic.ini ./
+COPY pyproject.toml alembic.ini start.sh ./
 COPY app ./app
 COPY alembic ./alembic
 RUN pip install --no-deps .
@@ -31,6 +31,7 @@ FROM base AS runtime
 USER app
 EXPOSE 8000
 # Behind a reverse proxy, set FORWARDED_ALLOW_IPS to the proxy's address so
-# rate limits see real client IPs (docs/09-deployment-guide.md).
+# rate limits see real client IPs (docs/09-deployment-guide.md). PORT and
+# WEB_CONCURRENCY follow the host's conventions.
 ENV FORWARDED_ALLOW_IPS=127.0.0.1
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --workers ${WEB_CONCURRENCY:-2}"]
+CMD ["sh", "/app/start.sh"]

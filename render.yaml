@@ -1,0 +1,53 @@
+# Render Blueprint for the free demonstration API (docs/09-deployment-guide.md,
+# "Free demo hosting"). Values marked sync: false are entered in Render's
+# dashboard when the Blueprint is created; none are stored in this file.
+services:
+  - type: web
+    name: civicwatch-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/v1/health/live
+    envVars:
+      - key: CIVICWATCH_ENVIRONMENT
+        value: production
+      # Free instances have no release step: create roles, migrate and seed
+      # the labelled sample data when the service starts.
+      - key: CIVICWATCH_PREPARE_DATABASE_ON_START
+        value: "true"
+      - key: CIVICWATCH_SEED_DEMO_ON_START
+        value: "true"
+      - key: DEMO_ACCOUNT_PASSWORD
+        sync: false
+      # 512 MB of memory: one worker process.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      # Render's proxy is the only hop in front of the app.
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      # Neon: the owner (migrations) and the civicwatch_app role (the API).
+      - key: CIVICWATCH_MIGRATION_DATABASE_URL
+        sync: false
+      - key: CIVICWATCH_DATABASE_URL
+        sync: false
+      # Upstash: rediss://default:<password>@<host>:6379
+      - key: CIVICWATCH_REDIS_URL
+        sync: false
+      # The Vercel address of the web app, e.g. https://civicwatch-zw.vercel.app
+      - key: CIVICWATCH_CORS_ORIGINS
+        sync: false
+      - key: CIVICWATCH_PUBLIC_WEB_URL
+        sync: false
+      # Backblaze B2 (private bucket), e.g. https://s3.us-west-004.backblazeb2.com
+      - key: CIVICWATCH_STORAGE_ENDPOINT_URL
+        sync: false
+      - key: CIVICWATCH_STORAGE_REGION
+        sync: false
+      - key: CIVICWATCH_STORAGE_BUCKET
+        sync: false
+      - key: CIVICWATCH_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: CIVICWATCH_STORAGE_SECRET_ACCESS_KEY
+        sync: false

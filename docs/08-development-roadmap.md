@@ -49,7 +49,8 @@ Acceptance: end-to-end report tracking and analytics work. **Met** — Milestone
 | 6.1 | Security review and hardening: request-size limits, rate limits on public reads and exports, frontend CSP and HSTS, stricter deployed settings, dependency audits | **Done** |
 | 6.2 | Production image and stack: locked runtime image, `deploy/compose.prod.yml` with Caddy (HTTPS), separate worker and scheduler, CI image builds, release workflow publishing to GHCR | **Done** — not yet run on a real server |
 | 6.3 | Demo environment: `seed-demo` command with labelled sample councils, staff, residents and reports; demo banner | **Done** |
-| 6.4 | First deployment and public demo | **Needs you**: a server (or managed platform), a domain, a private S3 bucket, an SMTP account and a tile provider; then the release variables in GitHub |
+| 6.4 | Free public demo: Vercel (web, with a same-origin API proxy), Render (API, `render.yaml`), Neon (PostGIS), Upstash (Redis), Backblaze B2 (photos); roles, migrations and sample data on start-up | **Ready to deploy** — needs the free accounts (docs/09, "Free demo hosting") |
+| 6.5 | Production deployment on a server or paid platform | Later: a server, a domain, a private bucket, an SMTP account and a tile provider |
 | — | Performance pass on representative phones (Lighthouse on a throttled connection), backups and restore drill, upload malware scanning, external penetration test | After the first deployment |
 
 ## Later milestones

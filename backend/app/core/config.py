@@ -4,8 +4,9 @@ Secrets are never hardcoded: every sensitive value must come from the
 environment (or a secret manager that populates it).
 """
 
+import json
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import (
     Field,
@@ -15,7 +16,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -46,7 +47,10 @@ class Settings(BaseSettings):
     redis_url: RedisDsn = Field(default=RedisDsn("redis://localhost:6379/0"))
 
     # Origins allowed to call the API from a browser (the Next.js frontend).
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # Comma-separated ("https://a.example,https://b.example") or a JSON list.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     # --- Sessions (see docs/06-security-and-privacy.md) ---------------------
     # The __Host- prefix makes browsers reject the cookie unless it is Secure,
@@ -128,6 +132,16 @@ class Settings(BaseSettings):
     # add a precise check per council.
     service_area_bbox: tuple[float, float, float, float] = (25.0, -22.6, 33.2, -15.4)
 
+    @field_validator("database_url", "migration_database_url", "worker_database_url", mode="before")
+    @classmethod
+    def _use_psycopg_driver(cls, value: object) -> object:
+        # Hosted databases (e.g. Neon) hand out postgres:// or postgresql:// URLs.
+        if isinstance(value, str):
+            for prefix in ("postgres://", "postgresql://"):
+                if value.startswith(prefix):
+                    return "postgresql+psycopg://" + value[len(prefix) :]
+        return None if value == "" else value
+
     @field_validator(
         "storage_endpoint_url",
         "storage_public_endpoint_url",
@@ -145,7 +159,9 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
-        if isinstance(value, str) and not value.startswith("["):
+        if isinstance(value, str):
+            if value.lstrip().startswith("["):
+                return json.loads(value)
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 

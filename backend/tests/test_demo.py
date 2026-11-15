@@ -49,3 +49,41 @@ def test_seed_demo_creates_labelled_sample_data(owner_engine: Engine, client) ->
 
     with pytest.raises(SystemExit, match="already present"):
         DemoSeeder().run()
+
+
+def test_seed_demo_with_a_shared_password(monkeypatch, capsys, client) -> None:
+    monkeypatch.setenv("DEMO_ACCOUNT_PASSWORD", "short")
+    assert main(["seed-demo", "--confirm", "--password-from-env"]) == 2
+
+    monkeypatch.setenv("DEMO_ACCOUNT_PASSWORD", "shared demo passphrase")
+    assert main(["seed-demo", "--confirm", "--if-empty", "--password-from-env"]) == 0
+    output = capsys.readouterr().out
+    assert "shared demo passphrase" not in output
+    assert "demo.platform@example.com" not in output.split("Sample accounts")[1]
+
+    staff = client.post(
+        "/api/v1/auth/login",
+        json={"email": "demo.harare.admin@example.com", "password": "shared demo passphrase"},
+    )
+    assert staff.status_code == 200
+    # The platform administrator never gets the shared password.
+    platform = client.post(
+        "/api/v1/auth/login",
+        json={"email": "demo.platform@example.com", "password": "shared demo passphrase"},
+    )
+    assert platform.status_code == 401
+
+    # Running again on start-up is a no-op.
+    assert main(["seed-demo", "--confirm", "--if-empty", "--password-from-env"]) == 0
+    assert "already present" in capsys.readouterr().out
+
+
+def test_hosted_database_urls_use_the_psycopg_driver() -> None:
+    from app.core.config import Settings
+
+    settings = Settings(
+        database_url="postgresql://app:pw@ep-x.neon.tech/neondb?sslmode=require",
+        migration_database_url="postgres://owner:pw@ep-x.neon.tech/neondb",
+    )
+    assert str(settings.database_url).startswith("postgresql+psycopg://app:pw@ep-x.neon.tech")
+    assert str(settings.migration_database_url).startswith("postgresql+psycopg://owner")

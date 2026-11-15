@@ -39,3 +39,17 @@ def test_host_prefixed_cookie_requires_secure_flag() -> None:
 def test_staff_limits_cannot_exceed_resident_limits() -> None:
     with pytest.raises(ValidationError):
         Settings(staff_session_idle_timeout_minutes=60 * 24 * 365)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("https://a.example", ["https://a.example"]),
+        ("https://a.example, https://b.example", ["https://a.example", "https://b.example"]),
+        ('["https://a.example"]', ["https://a.example"]),
+    ],
+)
+def test_cors_origins_from_the_environment(monkeypatch, raw, expected) -> None:
+    # Compose and hosting dashboards pass plain strings, not JSON.
+    monkeypatch.setenv("CIVICWATCH_CORS_ORIGINS", raw)
+    assert Settings().cors_origins == expected
