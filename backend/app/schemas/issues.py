@@ -127,8 +127,16 @@ class OwnStatusChange(StatusChange):
     note: str | None = None
 
 
+class OwnFeedback(BaseModel):
+    fixed: bool
+    comment: str | None
+    created_at: datetime
+
+
 class OwnIssueDetail(OwnIssue):
     history: list[OwnStatusChange]
+    # The reporter's own answer to "Was it fixed?", once given.
+    feedback: OwnFeedback | None = None
     photos: list[PhotoRead]
     repair_photos: list[PhotoRead] = []
 

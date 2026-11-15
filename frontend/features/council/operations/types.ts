@@ -64,6 +64,7 @@ export interface StaffIssueDetail extends StaffIssueSummary {
   available_transitions: AvailableTransition[];
   can_assign: boolean;
   can_add_repair_photos: boolean;
+  feedback: { fixed: boolean; comment: string | null; created_at: string } | null;
 }
 
 export interface QueueSummary {

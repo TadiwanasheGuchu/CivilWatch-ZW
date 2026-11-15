@@ -10,9 +10,11 @@ from app.api.v1.issue_presenters import IssuePresenter
 from app.core.rate_limit import RateLimiter
 from app.core.storage import ObjectStorage, get_storage
 from app.models.issues import IssueStatus
+from app.schemas.engagement import FeedbackRead, FeedbackRequest
 from app.schemas.issues import (
     CategoryRead,
     CreateIssueRequest,
+    OwnFeedback,
     OwnIssue,
     OwnIssueDetail,
     PhotoRead,
@@ -21,7 +23,8 @@ from app.schemas.issues import (
 )
 from app.schemas.operations import InformationResponse
 from app.schemas.pagination import Page, PageParams, page_params
-from app.services.issues import IssueService
+from app.services.feedback import FeedbackService
+from app.services.issues import IssueService, IssueView
 from app.services.photos import PhotoService
 
 categories_router = APIRouter(prefix="/categories", tags=["issues"])
@@ -136,8 +139,20 @@ def read_report(
 ) -> OwnIssueDetail | PublicIssueDetail:
     view = service.get_for_viewer(issue_id, viewer)
     if view.viewer_is_reporter:
-        return present.own_detail(view.issue, view.history)
+        return _own_detail_with_feedback(present, view, service)
     return present.public_detail(view.issue, view.history)
+
+
+def _own_detail_with_feedback(
+    present: IssuePresenter, view: IssueView, service: IssueService
+) -> OwnIssueDetail:
+    detail = present.own_detail(view.issue, view.history)
+    feedback = FeedbackService(service.db).for_issue(view.issue.id)
+    if feedback is not None:
+        detail.feedback = OwnFeedback(
+            fixed=feedback.fixed, comment=feedback.comment, created_at=feedback.created_at
+        )
+    return detail
 
 
 # Multipart framing overhead allowed on top of the photo itself.
@@ -213,3 +228,22 @@ def provide_information(
     service.respond_with_information(user, issue_id, payload.note)
     view = service.get_for_viewer(issue_id, user)
     return present.own_detail(view.issue, view.history)
+
+
+@router.post(
+    "/{issue_id}/feedback",
+    response_model=FeedbackRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Tell the council whether the problem was fixed (reporter, once)",
+    responses={
+        404: {"description": "Not your report"},
+        409: {"description": "Not resolved yet, or feedback already given"},
+    },
+)
+def give_feedback(
+    issue_id: uuid.UUID, payload: FeedbackRequest, user: CurrentUser, service: ServiceDep
+) -> FeedbackRead:
+    feedback = FeedbackService(service.db).submit(
+        user, issue_id, fixed=payload.fixed, comment=payload.comment
+    )
+    return FeedbackRead.model_validate(feedback)

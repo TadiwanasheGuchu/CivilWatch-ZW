@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AccountNav } from "@/features/authentication/account-nav";
 import { HeaderNav } from "@/features/navigation/header-nav";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 
 export function SiteHeader() {
   return (
@@ -19,6 +20,7 @@ export function SiteHeader() {
         </Link>
         <div className="flex items-center gap-2">
           <HeaderNav />
+          <NotificationBell />
           <AccountNav />
         </div>
       </div>

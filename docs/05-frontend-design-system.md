@@ -91,6 +91,13 @@ The **review page** puts the "Next step" and assignment panels right after the r
 - **Report form**: the council is chosen from the pin where a boundary covers it (with "(based on a sample boundary; check it is right)" when applicable), never overriding a council the person picked; a note explains when the pin is outside their chosen council. "Already reported nearby?" lists up to three verified reports of the same kind within 150 m, opening in a new tab so the draft stays put.
 - **Staff**: the Reports tab has a List/Map toggle (all of the council's reports, framed to its boundary; tapping a report opens it). The review page shows "Possible duplicates nearby" (within 200 m) while a report is being reviewed. Platform administrators get a Boundary tab to upload GeoJSON, with the result (area, points, overlaps) or a plain explanation of what is wrong.
 
+### Notifications and feedback (stage 5.1)
+
+- A **bell** in the header (signed-in only) shows the unread count in an amber badge; its accessible name says "Notifications, 3 unread". It refreshes every minute while the tab is visible and when the person returns to it.
+- The **notifications page** lists updates newest first; unread ones are tinted and bold with a teal dot and "Unread:" for screen readers. Opening one marks it read and goes to the report. "Mark all as read" clears them.
+- **Was the problem fixed?** appears on the reporter's resolved report: two large Yes/No buttons, then an optional comment ("What is still wrong?" for No). Once answered it shows a thank-you with the answer. Staff see "The reporter says it is (not) fixed" at the top of the review page.
+- On phones narrower than 400 px the account link shows only its icon, so the header fits with the bell.
+
 ### Maps
 
 Raster tiles (OpenStreetMap by default) with attribution, no rotation or tilt, zoom buttons, and cooperative gestures on read-only maps so page scrolling is not hijacked. The map library is only downloaded when a map is shown.

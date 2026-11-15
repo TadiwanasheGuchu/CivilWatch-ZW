@@ -28,7 +28,8 @@ export function AccountNav() {
   return (
     <Link href="/account" className={linkClass} aria-label={`Your account (${session.user.full_name})`}>
       <CircleUserRound aria-hidden="true" className="size-5" />
-      <span className="max-w-32 truncate">{firstName}</span>
+      {/* Icon only on the narrowest phones, where the header has no room; the link is still named. */}
+      <span className="hidden max-w-28 truncate min-[400px]:inline">{firstName}</span>
     </Link>
   );
 }

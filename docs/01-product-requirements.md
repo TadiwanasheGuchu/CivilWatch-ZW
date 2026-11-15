@@ -71,6 +71,11 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 - No official boundary files are available yet, so the platform ships **sample boundaries**: simple octagons around six city centres (Harare, Bulawayo, Mutare, Gweru, Masvingo, Kwekwe), loaded with `python -m app.cli load-sample-boundaries`. They are marked `sample` in the database and API and must always be labelled as samples in the UI.
 - Platform administrators replace them with official GeoJSON boundaries through the API; an official boundary is never overwritten by the sample loader.
 
+## Notifications and feedback (stage 5.1)
+
+- **In-app notifications** are built first, because they are needed whichever external channel is chosen: reporters hear about every status change (with the council's message), officers hear about work assigned to them, the officer who asked a question hears the reporter's answer, and the officer who resolved a report hears when the reporter says it is not fixed. Nobody is notified about their own action.
+- **Was it fixed?** Once a report is resolved (or closed), its reporter can answer once, with an optional comment, seen only by them and council staff. A "not fixed" answer alerts the resolving officer and is shown on the review page; **reports are not reopened automatically** — the council decides.
+
 ## Open questions (need product decisions)
 
-- **Contact channels:** SMS/WhatsApp notifications vs. email/in-app only. Affects Milestone 5 cost and providers.
+- **Contact channels:** whether to add email, SMS or WhatsApp delivery on top of in-app notifications. Each notification row is already an outbox entry, so a Celery worker can deliver them once a channel and provider are chosen.

@@ -26,6 +26,7 @@ from app.models.issues import (
 from app.repositories.issues import CategoryRepository, IssueRepository
 from app.schemas.issues import CreateIssueRequest
 from app.schemas.pagination import PageParams
+from app.services.notifications import Notifier
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,7 @@ class IssueService:
             )
         )
         issue.status = IssueStatus.UNDER_REVIEW
+        Notifier(self.db).information_provided(issue, note)
         self.db.commit()
         logger.info("reporter provided information", extra={"issue_id": str(issue.id)})
         return issue

@@ -132,6 +132,14 @@ class StaffIssueDetail(StaffIssueSummary):
     available_transitions: list[AvailableTransition]
     can_assign: bool
     can_add_repair_photos: bool
+    # The reporter's answer to "Was it fixed?", if given.
+    feedback: "FeedbackSummary | None" = None
+
+
+class FeedbackSummary(BaseModel):
+    fixed: bool
+    comment: str | None
+    created_at: datetime
 
 
 class TransitionRequest(BaseModel):

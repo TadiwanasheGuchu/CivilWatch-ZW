@@ -13,6 +13,7 @@ import { ApiError, errorMessage } from "@/lib/api-client";
 
 import { useReport } from "./hooks";
 import { formatDateTime, STATUS_EXPLANATIONS, STATUS_LABELS } from "./labels";
+import { FixFeedback } from "./fix-feedback";
 import { InformationAnswer } from "./information-answer";
 import { ReportPhotos } from "./report-photos";
 import { StatusBadge } from "./status-badge";
@@ -80,6 +81,9 @@ export function ReportDetailView({ id }: { id: string }) {
       </header>
 
       {awaitingInformation && session ? <InformationAnswer issue={issue} csrfToken={session.csrf_token} /> : null}
+      {isOwn && session && (issue.status === "RESOLVED" || issue.status === "CLOSED") ? (
+        <FixFeedback issue={issue} csrfToken={session.csrf_token} />
+      ) : null}
 
       <ReportPhotos issue={issue} editableBy={canEditPhotos} />
 

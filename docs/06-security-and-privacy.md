@@ -90,6 +90,11 @@ Three independent layers; each would stop a cross-council read on its own.
 
 - **Location from the browser** ("Use my current location", "Near me") is requested only when the person taps the button. It is sent to the API only as query parameters for the lookup and is not stored.
 
+## Notifications and feedback (stage 5.1)
+
+- Notifications are private to their recipient (API filter and RLS); they can only be created about reports the creator can read, so the mechanism cannot be used to message people about reports outside one's access. Links are relative and re-checked in the browser before navigation.
+- Feedback comments are visible only to the reporter and the council's staff, never in public responses or the public timeline.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

@@ -31,6 +31,14 @@ Acceptance: council staff can manage reports. **Met** — Milestone 3 is complet
 
 Acceptance: users can explore geographically relevant reports. **Met** — Milestone 4 is complete. Next: Milestone 5 (transparency and analytics).
 
+## Milestone 5 — Transparency and analytics
+
+| Stage | Scope | Status |
+|---|---|---|
+| 5.1 | In-app notifications (bell, list, read state) for reporters and staff; "Was it fixed?" feedback | **Done** |
+| 5.2 | Council performance dashboard, public transparency page with privacy-safe statistics, CSV exports | Next |
+| — | Email / SMS / WhatsApp delivery | Waiting for a decision on channels and providers |
+
 ## Later milestones
 
 2. Reporting (in progress):

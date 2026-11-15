@@ -24,6 +24,7 @@ from app.schemas.operations import (
     CreateDepartmentRequest,
     DepartmentRead,
     DepartmentRef,
+    FeedbackSummary,
     InternalUpdateRead,
     InternalUpdateRequest,
     IssueRef,
@@ -138,6 +139,15 @@ def _detail(view: StaffIssueView, present: IssuePresenter) -> StaffIssueDetail:
         ],
         can_assign=view.can_assign,
         can_add_repair_photos=view.can_add_repair_photos,
+        feedback=(
+            FeedbackSummary(
+                fixed=view.feedback.fixed,
+                comment=view.feedback.comment,
+                created_at=view.feedback.created_at,
+            )
+            if view.feedback
+            else None
+        ),
     )
 
 

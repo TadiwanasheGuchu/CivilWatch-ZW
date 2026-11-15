@@ -4,6 +4,7 @@ from app.models.audit import AuditLog
 from app.models.base import Base
 from app.models.councils import Council, CouncilMembership, CouncilRole
 from app.models.departments import Department
+from app.models.engagement import Notification, NotificationKind, ResolutionFeedback
 from app.models.identity import User, UserSession
 from app.models.issues import (
     PUBLISHED_STATUSES,
@@ -35,6 +36,9 @@ __all__ = [
     "IssueUpdate",
     "IssueVisibility",
     "MediaKind",
+    "Notification",
+    "NotificationKind",
+    "ResolutionFeedback",
     "User",
     "UserSession",
 ]

@@ -229,6 +229,20 @@ Any staff may list; administrators create (`{ name, description? }`) and update 
 ### `PATCH /members/{membership_id}` (changed)
 Body `{ "role"?, "department_id"? }` — at least one. A department applies only to managers and maintenance officers (`422` otherwise); changing someone to another role clears it. Member responses now include `department: { id, name } | null`. Audited as `membership.role_changed` / `membership.department_changed`.
 
+## Notifications
+
+All require sign-in; each person only ever sees their own.
+
+- `GET /api/v1/notifications?unread_only=&page=&page_size=` — newest first: `Page<{ id, kind, title, body, link, created_at, read_at }>`. `link` is always a relative in-app path.
+- `GET /api/v1/notifications/unread-count` — `{ unread }` (cheap; the header polls it every minute while the tab is visible).
+- `POST /api/v1/notifications/{id}/read` (CSRF) — marks one read; `404` for anyone else's.
+- `POST /api/v1/notifications/read-all` (CSRF) — `{ unread: 0 }`.
+
+## Resolution feedback
+
+### `POST /api/v1/issues/{issue_id}/feedback`
+The reporter, once (CSRF). Body `{ "fixed": true|false, "comment"?: "…" }` (≤1000). `201 { fixed, comment, created_at }`. `409 feedback_not_open` before the report is resolved; `409 conflict` if already given; `404` for anyone else. A "not fixed" answer notifies the officer who resolved the report. `OwnIssueDetail.feedback` and `StaffIssueDetail.feedback` show the answer; public responses never do.
+
 ## Maps and places
 
 ### `GET /api/v1/councils/boundaries`
@@ -257,4 +271,4 @@ Staff. Other reports in the same council within `radius_m` (25–2000, default 2
 
 ## Planned endpoint groups
 
-`/analytics`, `/notifications` — each documented here when implemented.
+`/analytics` — each documented here when implemented.

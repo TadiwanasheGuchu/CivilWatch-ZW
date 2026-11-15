@@ -64,6 +64,14 @@ export function provideInformation(issueId: string, note: string, csrfToken: str
   });
 }
 
+export function giveFeedback(issueId: string, body: { fixed: boolean; comment?: string }, csrfToken: string) {
+  return apiSend<{ fixed: boolean; comment: string | null; created_at: string }>(
+    "POST",
+    `/issues/${encodeURIComponent(issueId)}/feedback`,
+    { body, csrfToken },
+  );
+}
+
 export function removePhoto(issueId: string, photoId: string, csrfToken: string) {
   return apiSend(
     "DELETE",

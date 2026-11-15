@@ -121,6 +121,23 @@ function ReportBody({ issue, councilId, csrfToken }: { issue: StaffIssueDetail; 
   const [mapFailed, setMapFailed] = useState(false);
   return (
     <>
+      {issue.feedback ? (
+        <section
+          aria-labelledby="feedback-heading"
+          className={
+            issue.feedback.fixed
+              ? "space-y-1 rounded-[var(--radius-panel)] border-l-4 border-teal bg-surface p-4"
+              : "space-y-1 rounded-[var(--radius-panel)] border-l-4 border-red bg-surface p-4"
+          }
+        >
+          <h2 id="feedback-heading" className="text-base font-semibold">
+            {issue.feedback.fixed ? "The reporter says it is fixed" : "The reporter says it is not fixed"}
+          </h2>
+          {issue.feedback.comment ? <p className="whitespace-pre-line break-words">{issue.feedback.comment}</p> : null}
+          <p className="text-xs text-slate">{formatDateTime(issue.feedback.created_at)}</p>
+        </section>
+      ) : null}
+
       <section aria-labelledby="description-heading" className="space-y-2">
         <h2 id="description-heading" className="text-lg font-semibold">Description</h2>
         <p className="whitespace-pre-line break-words">{issue.description}</p>

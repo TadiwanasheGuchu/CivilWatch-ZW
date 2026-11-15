@@ -67,6 +67,8 @@ export interface IssueDetail extends PublicIssue {
   repair_photos: Photo[];
   /** Present only when the viewer is the reporter. */
   visibility?: Visibility;
+  /** The reporter's answer to "Was it fixed?" (reporter only). */
+  feedback?: { fixed: boolean; comment: string | null; created_at: string } | null;
   is_published?: boolean;
 }
 

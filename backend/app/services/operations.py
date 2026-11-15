@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError, FieldValidationError, NotFoundError, PermissionDeniedError
 from app.models.councils import CouncilMembership, CouncilRole
 from app.models.departments import Department
+from app.models.engagement import ResolutionFeedback
 from app.models.issues import (
     Issue,
     IssueAssignment,
@@ -29,6 +30,8 @@ from app.repositories.operations import (
 from app.schemas.operations import AssignRequest, TransitionRequest
 from app.schemas.pagination import PageParams
 from app.services import workflow
+from app.services.feedback import FeedbackService
+from app.services.notifications import Notifier
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ class StaffIssueView:
     transitions: list[tuple[IssueStatus, workflow.Transition]]
     can_assign: bool
     can_add_repair_photos: bool
+    feedback: "ResolutionFeedback | None"
 
 
 class CouncilIssueService:
@@ -58,6 +62,7 @@ class CouncilIssueService:
         self.db = db
         self.repo = OperationsRepository(db)
         self.departments = DepartmentRepository(db)
+        self.notifier = Notifier(db)
 
     # --- Reading ------------------------------------------------------------------------
 
@@ -97,6 +102,7 @@ class CouncilIssueService:
             transitions=workflow.available_transitions(access, issue.status, current),
             can_assign=self._may_assign_now(access, issue.status, current),
             can_add_repair_photos=workflow.can_add_repair_photos(self.db, access, issue),
+            feedback=FeedbackService(self.db).for_issue(issue.id),
         )
 
     # --- Changing status -----------------------------------------------------------------------
@@ -165,6 +171,9 @@ class CouncilIssueService:
         if issue.status == IssueStatus.VERIFIED:
             note = request.note or f"Assigned to the {department.name} department."
             self._set_status(issue, IssueStatus.ASSIGNED, access.user.id, note)
+        previous_assignee = previous.assignee_user_id if previous is not None else None
+        if request.assignee_user_id != previous_assignee:
+            self.notifier.work_assigned(issue, request.assignee_user_id, access.user.id)
         self.db.commit()
         logger.info("report assigned", extra={"issue_id": str(issue.id)})
 
@@ -210,6 +219,7 @@ class CouncilIssueService:
                 note=note,
             )
         )
+        self.notifier.status_changed(issue, to_status, note, actor_id)
         issue.status = to_status
 
     def _duplicate_target(
