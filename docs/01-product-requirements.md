@@ -76,6 +76,14 @@ Roads and potholes · Streetlights · Drainage and flooding · Water infrastruct
 - **In-app notifications** are built first, because they are needed whichever external channel is chosen: reporters hear about every status change (with the council's message), officers hear about work assigned to them, the officer who asked a question hears the reporter's answer, and the officer who resolved a report hears when the reporter says it is not fixed. Nobody is notified about their own action.
 - **Was it fixed?** Once a report is resolved (or closed), its reporter can answer once, with an optional comment, seen only by them and council staff. A "not fixed" answer alerts the resolving officer and is shown on the review page; **reports are not reopened automatically** — the council decides.
 
+## Email notifications (stage 5.2)
+
+- **Email is the first external channel** (decided). Every in-app notification is also emailed to its recipient, in plain text with a link to the report, by the background worker within about a minute.
+- People can turn emails off on their account page; in-app notifications stay on. Deactivated accounts get no email.
+- Undelivered emails are retried up to 5 times; notifications older than 48 hours are never emailed, so an outage does not end in a flood of stale messages.
+- Emails contain only what the in-app notification shows the same person.
+
 ## Open questions (need product decisions)
 
-- **Contact channels:** whether to add email, SMS or WhatsApp delivery on top of in-app notifications. Each notification row is already an outbox entry, so a Celery worker can deliver them once a channel and provider are chosen.
+- **SMS or WhatsApp:** whether to add either on top of email. The same outbox and worker pattern applies once a provider is chosen.
+- **Email provider for production:** any SMTP service works (settings only); which one depends on cost and deliverability to Zimbabwean mailboxes.

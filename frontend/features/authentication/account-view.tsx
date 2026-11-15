@@ -4,6 +4,7 @@ import { Panel } from "@/components/ui/panel";
 import { MembershipList } from "@/features/council/membership-list";
 
 import { ChangePasswordForm } from "./change-password-form";
+import { EmailPreference } from "./email-preference";
 import { ProfileForm } from "./profile-form";
 import { RequireSession } from "./require-session";
 import { SignOutButton } from "./sign-out-button";
@@ -26,6 +27,9 @@ export function AccountView() {
               <ChangePasswordForm session={session} />
             </Panel>
           </div>
+          <Panel title="Email" description="In-app notifications are always on.">
+            <EmailPreference session={session} />
+          </Panel>
           <Panel title="Sign out" description="Sign out of CivicWatch on this device.">
             <SignOutButton session={session} />
           </Panel>

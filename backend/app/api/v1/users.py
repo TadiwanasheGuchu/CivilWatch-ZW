@@ -25,7 +25,11 @@ def read_me(user: CurrentUser) -> UserRead:
 def update_me(
     payload: UpdateProfileRequest, user: CurrentUser, service: AuthServiceDep
 ) -> UserRead:
-    return UserRead.model_validate(service.update_profile(user, full_name=payload.full_name))
+    return UserRead.model_validate(
+        service.update_profile(
+            user, full_name=payload.full_name, email_notifications=payload.email_notifications
+        )
+    )
 
 
 @router.post(

@@ -36,8 +36,9 @@ Acceptance: users can explore geographically relevant reports. **Met** — Miles
 | Stage | Scope | Status |
 |---|---|---|
 | 5.1 | In-app notifications (bell, list, read state) for reporters and staff; "Was it fixed?" feedback | **Done** |
-| 5.2 | Council performance dashboard, public transparency page with privacy-safe statistics, CSV exports | Next |
-| — | Email / SMS / WhatsApp delivery | Waiting for a decision on channels and providers |
+| 5.2 | Email notifications (outbox delivery by the worker, opt-out on the account page, Mailpit locally) | **Done** |
+| 5.3 | Council performance dashboard, public transparency page with privacy-safe statistics, CSV exports | Next |
+| — | SMS / WhatsApp delivery | Waiting for a decision on channels and providers |
 
 ## Later milestones
 

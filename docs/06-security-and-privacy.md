@@ -95,6 +95,13 @@ Three independent layers; each would stop a cross-council read on its own.
 - Notifications are private to their recipient (API filter and RLS); they can only be created about reports the creator can read, so the mechanism cannot be used to message people about reports outside one's access. Links are relative and re-checked in the browser before navigation.
 - Feedback comments are visible only to the reporter and the council's staff, never in public responses or the public timeline.
 
+## Email delivery (stage 5.2)
+
+- Emails are sent by the worker as `civicwatch_worker`, a role that can read recipients' names and addresses and the notification text, and update only the delivery columns. It cannot read reports, photos, password hashes or sessions; the API role cannot mark emails sent. Tests check both.
+- An email carries the same title, message and link as the recipient's in-app notification, so it never reveals more than they can see in the app. The link is the app's address plus a relative path, never an address taken from user input.
+- SMTP uses STARTTLS (or implicit TLS) with certificate verification by default; the password is a secret setting and is never logged. Delivery errors are stored truncated for operators, without message content.
+- People can opt out; deactivated accounts receive nothing.
+
 ## Frontend
 
 - The browser never sees the session token (HttpOnly cookie). The CSRF token is held only in memory (the TanStack Query cache) and re-fetched from `GET /auth/session` on page load.

@@ -77,7 +77,7 @@ Requires session + CSRF. `204`; the session is revoked server-side and the cooki
 `200` with the signed-in user's profile (same shape as `SessionResponse.user`).
 
 ### `PATCH /api/v1/users/me`
-Requires CSRF. Body `{ "full_name" }` only — any other field (e.g. `is_platform_admin`) is a `422`. `200` with the updated profile.
+Requires CSRF. Body `{ "full_name"?, "email_notifications"? }` — at least one; any other field (e.g. `is_platform_admin`) is a `422`. `200` with the updated profile, which includes `email_notifications`.
 
 ### `POST /api/v1/users/me/password`
 Requires CSRF. Body `{ "current_password", "new_password" }`. `204` on success; every other session of the account is revoked. `400 invalid_current_password` if the current password is wrong (5 attempts per 15 minutes, then `429`). `422` if the new password is invalid or unchanged.

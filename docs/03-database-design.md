@@ -22,6 +22,7 @@ PostgreSQL 16 with PostGIS 3. Migrations are managed by Alembic (`backend/alembi
 | `0005` | Create `issue_media`; grants and RLS policies |
 | `0006` | Let reporters delete their photos before review |
 | `0010` | `notifications` and `resolution_feedback`, with RLS |
+| `0011` | Email delivery: `notifications.email_sent_at`/`email_attempts`/`email_last_error`, `users.email_notifications`, the `civicwatch_worker` role and its grants and policies |
 | `0009` | `councils.boundary_source` (`sample`/`official`) and `boundary_updated_at`, with checks that a boundary always has a source |
 | `0008` | `issue_media.kind` (`report`/`repair`); repair-photo insert policy for staff; reporter photo policies limited to report photos |
 | `0007` | Council operations: `departments`, `council_memberships.department_id`, `issue_assignments`, `issue_updates`, `issues.duplicate_of_issue_id`, `issue_status_history.note`; status updates by staff and reporters; RLS |
@@ -166,7 +167,9 @@ Staff-only working notes: `id`, `issue_id` + `council_id` (composite FK), `autho
 
 ### `notifications`
 
-`id`, `user_id` (FK, cascade), `issue_id` (FK, cascade), `kind` (`status_changed`, `information_requested`, `information_provided`, `work_assigned`, `feedback_not_fixed`), `title` (≤160), `body`, `link` (check: a relative in-app path), `created_at` (set by the application), `read_at`. Indexes: `(user_id, created_at)` and a partial index on unread rows per user.
+`id`, `user_id` (FK, cascade), `issue_id` (FK, cascade), `kind` (`status_changed`, `information_requested`, `information_provided`, `work_assigned`, `feedback_not_fixed`), `title` (≤160), `body`, `link` (check: a relative in-app path), `created_at` (set by the application), `read_at`, `email_sent_at`, `email_attempts` (default 0), `email_last_error` (≤300). Indexes: `(user_id, created_at)`, a partial index on unread rows per user, and a partial index on `created_at` for rows not yet emailed.
+
+`users.email_notifications` (boolean, default true) is the person's email preference.
 
 ### `resolution_feedback`
 
@@ -177,7 +180,8 @@ Staff-only working notes: `id`, `issue_id` + `council_id` (composite FK), `autho
 | Role | Used by | Privileges |
 |---|---|---|
 | Schema owner (`POSTGRES_USER`) | Alembic only | Owns all tables and the RLS helper functions |
-| `civicwatch_app` | API and workers | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT, UPDATE of `status`, `duplicate_of_issue_id`, `updated_at` only · `issue_media`: SELECT/INSERT/DELETE · `departments`: SELECT/INSERT, UPDATE of name/description/is_active · `issue_assignments`: SELECT/INSERT, UPDATE of `ended_at` · `issue_updates`: SELECT/INSERT · `notifications`: SELECT/INSERT, UPDATE of `read_at` · `resolution_feedback`: SELECT/INSERT · `issue_categories`: SELECT |
+| `civicwatch_worker` | Email delivery task | `users`: SELECT of `id`, `email`, `full_name`, `is_active`, `email_notifications` only (never password hashes) · `notifications`: SELECT of the columns an email needs, UPDATE of `email_sent_at`, `email_attempts`, `email_last_error` only. RLS policies for this role allow all notification rows. No access to reports, photos or anything else |
+| `civicwatch_app` | API and the session-purge task | `users`, `user_sessions`: SELECT/INSERT/UPDATE/DELETE · `councils`, `council_memberships`: SELECT/INSERT/UPDATE · `audit_logs`, `issue_status_history`: SELECT/INSERT only (append-only) · `issues`: SELECT/INSERT, UPDATE of `status`, `duplicate_of_issue_id`, `updated_at` only · `issue_media`: SELECT/INSERT/DELETE · `departments`: SELECT/INSERT, UPDATE of name/description/is_active · `issue_assignments`: SELECT/INSERT, UPDATE of `ended_at` · `issue_updates`: SELECT/INSERT · `notifications`: SELECT/INSERT, UPDATE of `read_at` · `resolution_feedback`: SELECT/INSERT · `issue_categories`: SELECT |
 
 The API sets the transaction-local setting `app.user_id` for every transaction of an authenticated request (`app/core/database.py`). Policies:
 
@@ -187,7 +191,7 @@ The API sets the transaction-local setting `app.user_id` for every transaction o
 - `issue_media` — read: exactly when the report is readable. Reporters insert and delete only `report` photos of their own report while it is `SUBMITTED` or `NEEDS_INFORMATION`. Council staff insert `repair` photos for their council's reports while `IN_PROGRESS` or `RESOLVED` (which staff exactly is decided by the workflow rules). Nobody else may insert, and repair photos cannot be deleted through the API.
 - `issues` (update) — staff of the report's council; or the reporter, only from `NEEDS_INFORMATION` and only to `UNDER_REVIEW`. Which staff may make which change is decided by the workflow rules in the API.
 - `departments` — read: council staff. Insert/update: the council's administrators.
-- `notifications` — read and mark read (`read_at` only): the recipient. Insert: any signed-in person, but only about a report they can themselves read.
+- `notifications` — read and mark read (`read_at` only; the API role cannot touch the email columns): the recipient. Insert: any signed-in person, but only about a report they can themselves read.
 - `resolution_feedback` — read: the reporter and the council's staff. Insert: the reporter, for their own report, once it is `RESOLVED` or `CLOSED`.
 - `issue_assignments`, `issue_updates` — read: council staff only (never residents or the public). Insert: council staff, as themselves.
 - `issue_status_history` — read: exactly when the report is readable (the policy's subquery runs under the `issues` policies). Insert: only as yourself, for a report you can read.

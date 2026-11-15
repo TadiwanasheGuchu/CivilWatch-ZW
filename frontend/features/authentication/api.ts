@@ -24,7 +24,10 @@ export function signOut(csrfToken: string) {
   return apiSend("POST", "/auth/logout", { csrfToken });
 }
 
-export function updateProfile(input: { full_name: string }, csrfToken: string) {
+export function updateProfile(
+  input: { full_name?: string; email_notifications?: boolean },
+  csrfToken: string,
+) {
   return apiSend<CurrentUser>("PATCH", "/users/me", { body: input, csrfToken });
 }
 

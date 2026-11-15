@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     func,
@@ -57,6 +58,12 @@ class Notification(UUIDPrimaryKeyMixin, Base):
         server_default=func.now(),
     )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Email delivery (outbox), handled by the worker under its own database role.
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    email_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    email_last_error: Mapped[str | None] = mapped_column(String(300))
 
     __table_args__ = (
         CheckConstraint(f"kind IN ({_KINDS})", name="kind_valid"),
@@ -66,6 +73,11 @@ class Notification(UUIDPrimaryKeyMixin, Base):
             "ix_notifications_unread",
             "user_id",
             postgresql_where=text("read_at IS NULL"),
+        ),
+        Index(
+            "ix_notifications_email_pending",
+            "created_at",
+            postgresql_where=text("email_sent_at IS NULL"),
         ),
     )
 

@@ -11,6 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-civicwatch}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
+      WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD:?Set WORKER_DB_PASSWORD in .env}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -120,7 +121,16 @@ services:
     build: ./backend
     # --beat embeds the scheduler for local use; run a separate beat process in production.
     command: ["celery", "-A", "app.workers.celery_app", "worker", "--beat", "--loglevel=INFO"]
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      # Only the worker reads every user's notifications, to email them.
+      CIVICWATCH_WORKER_DATABASE_URL: postgresql+psycopg://civicwatch_worker:${WORKER_DB_PASSWORD}@db:5432/${POSTGRES_DB:-civicwatch}
+      # Local mail goes to Mailpit; read it at http://localhost:8025.
+      CIVICWATCH_SMTP_HOST: mailpit
+      CIVICWATCH_SMTP_PORT: "1025"
+      CIVICWATCH_SMTP_STARTTLS: "false"
+      CIVICWATCH_EMAIL_FROM: CivicWatch ZW <notifications@civicwatch.local>
+      CIVICWATCH_PUBLIC_WEB_URL: http://localhost:3000
     volumes:
       - ./backend/app:/app/app
     depends_on:
@@ -130,6 +140,14 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+
+  # Catches every email sent locally; nothing leaves your machine.
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "127.0.0.1:8025:8025"
 
   web:
     build:

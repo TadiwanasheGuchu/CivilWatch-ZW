@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Schema-owner connection used only by Alembic. The API's database_url
     # must use the unprivileged `civicwatch_app` role so RLS applies to it.
     migration_database_url: PostgresDsn | None = None
+    # The background worker's connection (role civicwatch_worker): it reads
+    # notifications across all users to email them, which the API role cannot.
+    worker_database_url: PostgresDsn | None = None
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=100)
 
@@ -91,6 +94,22 @@ class Settings(BaseSettings):
     photo_thumbnail_max_px: int = 400
     photo_jpeg_quality: int = Field(default=80, ge=50, le=95)
 
+    # --- Email notifications (SMTP) --------------------------------------------------
+    # Unset smtp_host disables email delivery; in-app notifications still work.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_starttls: bool = True
+    smtp_use_ssl: bool = False
+    email_from: str | None = None
+    # Absolute address of the web app, for links in emails.
+    public_web_url: str = "http://localhost:3000"
+    email_batch_size: int = Field(default=50, ge=1, le=500)
+    email_max_attempts: int = Field(default=5, ge=1, le=20)
+    # Older undelivered notifications are not emailed (no floods after an outage).
+    email_max_age_hours: int = Field(default=48, ge=1)
+
     # --- Service area -----------------------------------------------------------
     # Reports must fall inside this box (west, south, east, north; WGS 84).
     # Default: Zimbabwe with a small margin. Council boundaries (Milestone 4)
@@ -112,6 +131,8 @@ class Settings(BaseSettings):
             raise ValueError("__Host- cookies require session_cookie_secure=true")
         if self.session_absolute_timeout_minutes < self.session_idle_timeout_minutes:
             raise ValueError("absolute session timeout must not be shorter than idle timeout")
+        if self.smtp_host and not self.email_from:
+            raise ValueError("email_from must be set when smtp_host is set")
         if (
             self.staff_session_idle_timeout_minutes > self.session_idle_timeout_minutes
             or self.staff_session_absolute_timeout_minutes > self.session_absolute_timeout_minutes

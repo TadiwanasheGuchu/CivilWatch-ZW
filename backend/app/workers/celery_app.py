@@ -18,6 +18,7 @@ celery_app.conf.update(
 )
 celery_app.conf.beat_schedule = {
     "purge-stale-sessions": {"task": "identity.purge_stale_sessions", "schedule": 60 * 60},
+    "deliver-notification-emails": {"task": "notifications.deliver_email", "schedule": 60},
 }
 # Discovers app/workers/tasks.py.
 celery_app.autodiscover_tasks(["app.workers"])

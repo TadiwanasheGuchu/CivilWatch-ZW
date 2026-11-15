@@ -167,8 +167,13 @@ class AuthService:
 
     # --- Account changes -------------------------------------------------------
 
-    def update_profile(self, user: User, *, full_name: str) -> User:
-        user.full_name = full_name
+    def update_profile(
+        self, user: User, *, full_name: str | None = None, email_notifications: bool | None = None
+    ) -> User:
+        if full_name is not None:
+            user.full_name = full_name
+        if email_notifications is not None:
+            user.email_notifications = email_notifications
         self.db.commit()
         return user
 

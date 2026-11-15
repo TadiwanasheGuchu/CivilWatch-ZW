@@ -95,6 +95,7 @@ The **review page** puts the "Next step" and assignment panels right after the r
 
 - A **bell** in the header (signed-in only) shows the unread count in an amber badge; its accessible name says "Notifications, 3 unread". It refreshes every minute while the tab is visible and when the person returns to it.
 - The **notifications page** lists updates newest first; unread ones are tinted and bold with a teal dot and "Unread:" for screen readers. Opening one marks it read and goes to the report. "Mark all as read" clears them.
+- The **account page** has an "Email" panel with one checkbox, "Email me about my reports and assigned work". It saves as soon as it changes, shows the new state at once (put back if saving fails), and announces "Emails turned off/on." in a status region.
 - **Was the problem fixed?** appears on the reporter's resolved report: two large Yes/No buttons, then an optional comment ("What is still wrong?" for No). Once answered it shows a thank-you with the answer. Staff see "The reporter says it is (not) fixed" at the top of the review page.
 - On phones narrower than 400 px the account link shows only its icon, so the header fits with the bell.
 

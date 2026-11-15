@@ -17,6 +17,7 @@ env:
   # The API and tests run as the unprivileged role so Row-Level Security applies.
   CIVICWATCH_DATABASE_URL: postgresql+psycopg://civicwatch_app:civicwatch_app@localhost:5432/civicwatch_test
   CIVICWATCH_MIGRATION_DATABASE_URL: postgresql+psycopg://civicwatch:civicwatch@localhost:5432/civicwatch_test
+  CIVICWATCH_WORKER_DATABASE_URL: postgresql+psycopg://civicwatch_worker:civicwatch_worker@localhost:5432/civicwatch_test
   CIVICWATCH_REDIS_URL: redis://localhost:6379/0
   # Real S3-compatible storage (MinIO), so tests also prove that photos cannot
   # be fetched without a valid, unexpired signature.
@@ -59,7 +60,7 @@ jobs:
       - name: Create application database role
         env:
           PGPASSWORD: civicwatch
-        run: psql -h localhost -U civicwatch -d civicwatch_test -c "CREATE ROLE civicwatch_app LOGIN PASSWORD 'civicwatch_app'"
+        run: psql -h localhost -U civicwatch -d civicwatch_test -c "CREATE ROLE civicwatch_app LOGIN PASSWORD 'civicwatch_app'" -c "CREATE ROLE civicwatch_worker LOGIN PASSWORD 'civicwatch_worker'"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -120,7 +121,7 @@ jobs:
       - name: Create application database role
         env:
           PGPASSWORD: civicwatch
-        run: psql -h localhost -U civicwatch -d civicwatch_test -c "CREATE ROLE civicwatch_app LOGIN PASSWORD 'civicwatch_app'"
+        run: psql -h localhost -U civicwatch -d civicwatch_test -c "CREATE ROLE civicwatch_app LOGIN PASSWORD 'civicwatch_app'" -c "CREATE ROLE civicwatch_worker LOGIN PASSWORD 'civicwatch_worker'"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

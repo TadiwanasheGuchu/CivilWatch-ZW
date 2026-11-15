@@ -4,6 +4,7 @@ export interface CurrentUser {
   email: string;
   full_name: string;
   is_platform_admin: boolean;
+  email_notifications: boolean;
   created_at: string;
 }
 

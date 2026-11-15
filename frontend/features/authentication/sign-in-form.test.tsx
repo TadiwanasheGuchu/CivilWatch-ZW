@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const session = {
-  user: { id: "u1", email: "a@example.com", full_name: "A", is_platform_admin: false, created_at: "" },
+  user: { id: "u1", email: "a@example.com", full_name: "A", is_platform_admin: false, email_notifications: true, created_at: "" },
   csrf_token: "csrf",
   expires_at: "",
 };

@@ -53,6 +53,22 @@ def bind_rls_user(session: Session, user_id: uuid.UUID) -> None:
         session.execute(_SET_RLS_USER, {"user_id": str(user_id)})
 
 
+@lru_cache
+def get_worker_session_factory() -> sessionmaker[Session] | None:
+    """Sessions for the background worker's own role, or None if not configured."""
+    url = get_settings().worker_database_url
+    if url is None:
+        return None
+    engine = create_engine(
+        str(url),
+        pool_size=2,
+        max_overflow=2,
+        pool_pre_ping=True,
+        connect_args={"options": "-c timezone=UTC"},
+    )
+    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
 def get_db() -> Iterator[Session]:
     """FastAPI dependency yielding a session; rolls back on any error."""
     session = get_session_factory()()

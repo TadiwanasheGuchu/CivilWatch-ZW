@@ -7,7 +7,7 @@ import type { SessionData } from "./types";
 import { SESSION_QUERY_KEY, useSetSession } from "./use-session";
 
 const sessionFor = (id: string): SessionData => ({
-  user: { id, email: `${id}@example.com`, full_name: id, is_platform_admin: false, created_at: "" },
+  user: { id, email: `${id}@example.com`, full_name: id, is_platform_admin: false, email_notifications: true, created_at: "" },
   csrf_token: "t",
   expires_at: "",
 });

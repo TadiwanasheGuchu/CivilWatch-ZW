@@ -16,12 +16,20 @@ docker compose up --build
 | `api` | http://localhost:8000 | FastAPI with reload; docs at `/docs` |
 | `db` | 127.0.0.1:5432 | `postgis/postgis:16-3.4` |
 | `redis` | 127.0.0.1:6379 | Cache and Celery broker |
-| `worker` | — | Celery worker with embedded beat scheduler (hourly session purge) |
+| `worker` | — | Celery worker with embedded beat scheduler (hourly session purge, notification emails every minute) |
+| `mailpit` | http://localhost:8025 | Catches every email sent locally; nothing is delivered to real mailboxes |
 | `minio` | 127.0.0.1:9000 (S3), :9001 (console) | Private photo storage; browsers fetch photos here through signed URLs |
 | `minio-init` | — | Creates the private bucket and a storage account limited to it, then exits |
 | `migrate` | — | Runs `alembic upgrade head` before `api` and `worker` start |
 
-The database container creates `civicwatch_app` (password `APP_DB_PASSWORD` from `.env`) only when its volume is first initialised. `.env` also needs the MinIO and storage values from `.env.example` (stage 2.2).
+The database container creates `civicwatch_app` (password `APP_DB_PASSWORD` from `.env`) and `civicwatch_worker` (password `WORKER_DB_PASSWORD`) only when its volume is first initialised.
+
+**If your volume is older than stage 5.2**, migration `0011` creates `civicwatch_worker` without a login; give it one (with the password from `.env`) instead of recreating the volume:
+
+```bash
+docker compose exec db psql -U civicwatch -c "ALTER ROLE civicwatch_worker LOGIN PASSWORD 'change-me-worker-local-only'"
+```
+ `.env` also needs the MinIO and storage values from `.env.example` (stage 2.2).
 
 **If you ran the stack before stage 1.3**, recreate the volume so the role exists (this deletes local data):
 
@@ -73,6 +81,7 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_ENVIRONMENT` | `development` | `development`, `test`, `staging`, `production` |
 | `CIVICWATCH_DATABASE_URL` | local `civicwatch` DB | API connection; must use the unprivileged `civicwatch_app` role |
 | `CIVICWATCH_MIGRATION_DATABASE_URL` | falls back to `CIVICWATCH_DATABASE_URL` | Schema-owner connection used only by Alembic |
+| `CIVICWATCH_WORKER_DATABASE_URL` | unset | Worker connection as `civicwatch_worker`, for email delivery; unset disables email |
 | `CIVICWATCH_REDIS_URL` | `redis://localhost:6379/0` | Redis / Celery broker |
 | `CIVICWATCH_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed browser origins |
 | `CIVICWATCH_LOG_LEVEL` | `INFO` | Log level |
@@ -96,6 +105,13 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_STORAGE_ACCESS_KEY_ID`, `CIVICWATCH_STORAGE_SECRET_ACCESS_KEY` | — | Storage credentials; give them access to this bucket only |
 | `CIVICWATCH_STORAGE_REGION` | `us-east-1` | |
 | `CIVICWATCH_MEDIA_URL_TTL_SECONDS` | `300` | Lifetime of signed photo URLs (30–3600) |
+| `CIVICWATCH_SMTP_HOST` | unset | SMTP server; unset disables email (in-app notifications still work) |
+| `CIVICWATCH_SMTP_PORT` | `587` | |
+| `CIVICWATCH_SMTP_USERNAME`, `CIVICWATCH_SMTP_PASSWORD` | unset | SMTP credentials (secret) |
+| `CIVICWATCH_SMTP_STARTTLS` / `CIVICWATCH_SMTP_USE_SSL` | `true` / `false` | STARTTLS on 587, or implicit TLS on 465; Compose turns both off for Mailpit |
+| `CIVICWATCH_EMAIL_FROM` | unset | Sender, e.g. `CivicWatch ZW <notifications@example.org>`; required when `SMTP_HOST` is set |
+| `CIVICWATCH_PUBLIC_WEB_URL` | `http://localhost:3000` | Address of the web app, for links in emails |
+| `CIVICWATCH_EMAIL_MAX_ATTEMPTS` / `CIVICWATCH_EMAIL_MAX_AGE_HOURS` / `CIVICWATCH_EMAIL_BATCH_SIZE` | `5` / `48` / `50` | Retry limit, oldest notification still emailed, emails per run |
 | `CIVICWATCH_PHOTO_MAX_UPLOAD_BYTES` | `10485760` | Largest accepted upload |
 | `CIVICWATCH_PHOTOS_PER_ISSUE` | `5` | Photos per report |
 | `CIVICWATCH_PHOTO_UPLOADS_PER_USER` | `60` | Uploads per user per window (`CIVICWATCH_PHOTO_UPLOAD_WINDOW_SECONDS`, 3600) |

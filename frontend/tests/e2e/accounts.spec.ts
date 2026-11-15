@@ -79,4 +79,17 @@ test.describe("accounts", () => {
     const other = await user.api.get("users/me");
     expect(other.status()).toBe(401);
   });
+
+  test("turn notification emails off and on again", async ({ page }) => {
+    const user = await registerViaApi("Tendai Email");
+    await signInViaUi(page, user.email);
+    const toggle = page.getByLabel("Email me about my reports and assigned work");
+    await expect(toggle).toBeChecked();
+    await toggle.uncheck();
+    await expect(page.getByText("Emails turned off.")).toBeVisible();
+    await page.reload();
+    await expect(toggle).not.toBeChecked();
+    await toggle.check();
+    await expect(page.getByText("Emails turned on.")).toBeVisible();
+  });
 });
