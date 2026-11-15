@@ -73,6 +73,18 @@ class Settings(BaseSettings):
 
     photo_uploads_per_user: int = 60
     photo_upload_window_seconds: int = 60 * 60
+    # Public read endpoints that run spatial or aggregate queries (map
+    # clusters, nearby, council lookup, statistics, public listing).
+    public_reads_per_ip: int = 600
+    public_read_window_seconds: int = 5 * 60
+    exports_per_user: int = 20
+    export_window_seconds: int = 60 * 60
+
+    # --- Request size --------------------------------------------------------------
+    # Largest request body accepted; photo uploads and boundary uploads have
+    # their own, larger limits (see app/core/middleware.py).
+    max_request_bytes: int = Field(default=1024 * 1024, ge=16 * 1024)
+    max_boundary_request_bytes: int = Field(default=8 * 1024 * 1024, ge=16 * 1024)
 
     # --- Photo storage (S3-compatible; MinIO locally) -----------------------------
     # The bucket must be private. Browsers only ever receive short-lived
@@ -116,6 +128,20 @@ class Settings(BaseSettings):
     # add a precise check per council.
     service_area_bbox: tuple[float, float, float, float] = (25.0, -22.6, 33.2, -15.4)
 
+    @field_validator(
+        "storage_endpoint_url",
+        "storage_public_endpoint_url",
+        "smtp_host",
+        "smtp_username",
+        "smtp_password",
+        "email_from",
+        mode="before",
+    )
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        # Compose passes unset optional variables as empty strings.
+        return None if value == "" else value
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -133,12 +159,32 @@ class Settings(BaseSettings):
             raise ValueError("absolute session timeout must not be shorter than idle timeout")
         if self.smtp_host and not self.email_from:
             raise ValueError("email_from must be set when smtp_host is set")
+        if self.environment in ("staging", "production"):
+            self._check_deployed()
         if (
             self.staff_session_idle_timeout_minutes > self.session_idle_timeout_minutes
             or self.staff_session_absolute_timeout_minutes > self.session_absolute_timeout_minutes
         ):
             raise ValueError("staff session limits must not be longer than resident limits")
         return self
+
+    def _check_deployed(self) -> None:
+        """Refuse settings that are only acceptable on a developer's machine."""
+        insecure = [o for o in self.cors_origins if not o.startswith("https://")]
+        if insecure:
+            raise ValueError(f"cors_origins must use https outside development: {insecure}")
+        if not self.public_web_url.startswith("https://"):
+            raise ValueError("public_web_url must use https outside development")
+        if self.storage_access_key_id is None or self.storage_secret_access_key is None:
+            raise ValueError("storage credentials must be set outside development")
+        if self.migration_database_url is None:
+            raise ValueError(
+                "migration_database_url must be set: the API must not connect as the schema owner"
+            )
+        if self.smtp_host and self.worker_database_url is None:
+            raise ValueError("worker_database_url must be set when email delivery is enabled")
+        if self.smtp_host and not (self.smtp_starttls or self.smtp_use_ssl):
+            raise ValueError("SMTP must use STARTTLS or TLS outside development")
 
     @property
     def effective_migration_database_url(self) -> str:

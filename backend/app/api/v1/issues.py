@@ -5,7 +5,14 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
 
-from app.api.deps import CurrentUser, DbDep, OptionalUser, SettingsDep, get_rate_limiter
+from app.api.deps import (
+    CurrentUser,
+    DbDep,
+    OptionalUser,
+    PublicReadLimit,
+    SettingsDep,
+    get_rate_limiter,
+)
 from app.api.v1.issue_presenters import IssuePresenter
 from app.core.rate_limit import RateLimiter
 from app.core.storage import ObjectStorage, get_storage
@@ -103,6 +110,7 @@ def my_reports(
 
 @router.get(
     "",
+    dependencies=[PublicReadLimit],
     response_model=Page[PublicIssue],
     summary="Published public reports, newest first",
 )

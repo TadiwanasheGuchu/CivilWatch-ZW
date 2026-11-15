@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { DemoBanner } from "@/components/demo-banner";
 import { SiteHeader } from "@/components/site-header";
 import { BottomNav } from "@/features/navigation/bottom-nav";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <Providers>
+          <DemoBanner />
           <SiteHeader />
           {/* Room for the phone bottom navigation. */}
           <div className="pb-20 md:pb-0">{children}</div>

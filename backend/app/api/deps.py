@@ -53,6 +53,23 @@ def get_client_context(request: Request) -> ClientContext:
 ClientContextDep = Annotated[ClientContext, Depends(get_client_context)]
 
 
+def public_read_limit(
+    client: ClientContextDep,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+    settings: SettingsDep,
+) -> None:
+    """Per-IP limit for public endpoints that run spatial or aggregate queries."""
+    limiter.hit(
+        "public_read:ip",
+        client.ip_address,
+        limit=settings.public_reads_per_ip,
+        window_seconds=settings.public_read_window_seconds,
+    )
+
+
+PublicReadLimit = Depends(public_read_limit)
+
+
 def get_session_token(request: Request, settings: SettingsDep) -> str | None:
     return request.cookies.get(settings.session_cookie_name) or None
 

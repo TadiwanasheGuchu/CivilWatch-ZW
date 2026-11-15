@@ -1,0 +1,129 @@
+# Production stack for a single server: Caddy (HTTPS) in front of the web app
+# and API on one domain. Photos live in an external private S3 bucket.
+#
+#   cp deploy/.env.production.example deploy/.env.production   # fill it in
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env.production up -d
+#
+# See docs/09-deployment-guide.md.
+name: civicwatch
+
+x-backend-env: &backend-env
+  CIVICWATCH_ENVIRONMENT: production
+  CIVICWATCH_DATABASE_URL: postgresql+psycopg://civicwatch_app:${APP_DB_PASSWORD:?}@db:5432/${POSTGRES_DB:-civicwatch}
+  CIVICWATCH_MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-civicwatch}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-civicwatch}
+  CIVICWATCH_REDIS_URL: redis://redis:6379/0
+  CIVICWATCH_CORS_ORIGINS: https://${CIVICWATCH_DOMAIN:?}
+  CIVICWATCH_PUBLIC_WEB_URL: https://${CIVICWATCH_DOMAIN}
+  CIVICWATCH_STORAGE_ENDPOINT_URL: ${STORAGE_ENDPOINT_URL:-}
+  CIVICWATCH_STORAGE_PUBLIC_ENDPOINT_URL: ${STORAGE_PUBLIC_ENDPOINT_URL:-}
+  CIVICWATCH_STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+  CIVICWATCH_STORAGE_BUCKET: ${STORAGE_BUCKET:?}
+  CIVICWATCH_STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?}
+  CIVICWATCH_STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?}
+
+x-worker-env: &worker-env
+  <<: *backend-env
+  CIVICWATCH_WORKER_DATABASE_URL: postgresql+psycopg://civicwatch_worker:${WORKER_DB_PASSWORD:?}@db:5432/${POSTGRES_DB:-civicwatch}
+  CIVICWATCH_SMTP_HOST: ${SMTP_HOST:-}
+  CIVICWATCH_SMTP_PORT: ${SMTP_PORT:-587}
+  CIVICWATCH_SMTP_USERNAME: ${SMTP_USERNAME:-}
+  CIVICWATCH_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  CIVICWATCH_EMAIL_FROM: ${EMAIL_FROM:-}
+
+services:
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CIVICWATCH_DOMAIN: ${CIVICWATCH_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web, api]
+
+  web:
+    image: ${WEB_IMAGE:?Set WEB_IMAGE}
+    restart: unless-stopped
+
+  api:
+    image: ${API_IMAGE:?Set API_IMAGE}
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      # Only Caddy can reach the API (no published port), so trust its forwarded headers.
+      FORWARDED_ALLOW_IPS: "*"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  migrate:
+    image: ${API_IMAGE}
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    image: ${API_IMAGE}
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO"]
+    environment: *worker-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # Exactly one scheduler.
+  beat:
+    image: ${API_IMAGE}
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=INFO", "--schedule", "/tmp/celerybeat-schedule"]
+    environment: *worker-env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-civicwatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-civicwatch}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../docker/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1000"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  caddy-data:
+  caddy-config:
+  db-data:
+  redis-data:

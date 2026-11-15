@@ -8,6 +8,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import (
+    BodySizeLimitMiddleware,
     OriginCheckMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
@@ -29,7 +30,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Order matters: the last middleware added runs first. The request-context
     # middleware wraps everything so every log line and error carries the ID.
     app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.cors_origins)
-    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        SecurityHeadersMiddleware, hsts=settings.environment in ("staging", "production")
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -39,6 +42,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(RequestContextMiddleware)
+    # Outermost: refuse oversized bodies before anything reads them.
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        default_limit=settings.max_request_bytes,
+        photo_limit=settings.photo_max_upload_bytes,
+        boundary_limit=settings.max_boundary_request_bytes,
+    )
 
     register_error_handlers(app)
     app.include_router(api_router, prefix=settings.api_v1_prefix)

@@ -3,6 +3,7 @@
     python -m app.cli grant-platform-admin someone@example.com
     python -m app.cli revoke-platform-admin someone@example.com
     python -m app.cli load-sample-boundaries [--create-missing]
+    python -m app.cli seed-demo --confirm
 
 There is deliberately no HTTP endpoint for granting platform administration:
 it requires shell access to the deployment, and every change is audited.
@@ -86,6 +87,19 @@ def load_sample_boundaries(*, create_missing: bool = False) -> list[str]:
     return report
 
 
+def seed_demo(*, confirm: bool) -> int:
+    if not confirm:
+        print("This adds sample accounts and reports. Run again with --confirm.")
+        return 2
+    from app.demo import DemoSeeder  # imports app.cli; avoid a cycle at load time
+
+    accounts = DemoSeeder().run()
+    print("\nSample accounts (passwords are shown only now; store them safely):")
+    for account in accounts:
+        print(f"  {account.email:<45} {account.password}   {account.full_name}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -96,7 +110,15 @@ def main(argv: list[str] | None = None) -> int:
         "load-sample-boundaries", help="Apply SAMPLE (non-official) boundaries for demonstrations"
     )
     samples.add_argument("--create-missing", action="store_true", help="Create sample councils too")
+    demo = commands.add_parser(
+        "seed-demo", help="Add labelled SAMPLE councils, staff, residents and reports"
+    )
+    demo.add_argument(
+        "--confirm", action="store_true", help="Required: this adds sample data to the database"
+    )
     args = parser.parse_args(argv)
+    if args.command == "seed-demo":
+        return seed_demo(confirm=args.confirm)
     if args.command == "load-sample-boundaries":
         for line in load_sample_boundaries(create_missing=args.create_missing):
             print(line)

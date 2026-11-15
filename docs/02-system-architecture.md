@@ -67,6 +67,10 @@ Server components by default; client components only where interactivity or TanS
 | Boundaries validated in PostGIS (`ST_IsValid`, vertex limit, inside the service area) and simplified to ~100 m for display | Adopted (stage 4.1) |
 | Map markers are HTML buttons over a raster map (no font glyph server needed; keyboard and screen-reader accessible); the heatmap is a MapLibre layer on the same cluster data | Adopted (stage 4.2) |
 | Notifications written in the same transaction as the change that causes them; the table doubles as the outbox for future external channels | Adopted (stage 5.1) |
+| Production on one server: Caddy terminates HTTPS and serves the web app and the API (under `/api`) on a single domain, so the browser makes same-origin requests; separate `api`, `worker`, `beat` and `migrate` containers from one image (`deploy/compose.prod.yml`) | Adopted (stage 6.2); a managed platform can replace it without code changes |
+| Backend image in two targets: `runtime` (locked dependencies from `requirements.lock`, no tests or test tools) for production and `dev` for Compose and CI | Adopted (stage 6.2) |
+| Images built and published to GitHub Container Registry by a workflow that runs only after CI passes on `main`, tagged with the commit SHA | Adopted (stage 6.2) |
+| Demonstration data created by an operator command that goes through the real services and workflow, never by inserting rows directly | Adopted (stage 6.3) |
 | Analytics computed on request with SQL aggregates (`percentile_cont` medians over `issue_status_history`) instead of a separate warehouse or pre-computed tables; public statistics cached by browsers and proxies for 5 minutes | Adopted (stage 5.3) |
 | Email delivered from that outbox by a Celery beat task every minute, over SMTP, as a separate `civicwatch_worker` database role that can read only what emailing needs; rows claimed with `FOR UPDATE SKIP LOCKED` so several workers never send twice | Adopted (stage 5.2) |
 | Council screens under `/council/[id]/…` (overview, reports, review, my work, departments, staff, audit), in `features/council/operations/` | Adopted (stage 3.2) |

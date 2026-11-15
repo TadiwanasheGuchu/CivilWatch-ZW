@@ -105,6 +105,9 @@ cd frontend && npm install && npm run dev
 | `CIVICWATCH_STORAGE_ACCESS_KEY_ID`, `CIVICWATCH_STORAGE_SECRET_ACCESS_KEY` | — | Storage credentials; give them access to this bucket only |
 | `CIVICWATCH_STORAGE_REGION` | `us-east-1` | |
 | `CIVICWATCH_MEDIA_URL_TTL_SECONDS` | `300` | Lifetime of signed photo URLs (30–3600) |
+| `CIVICWATCH_PUBLIC_READS_PER_IP` | `600` | Requests per IP per window to the expensive public endpoints (`CIVICWATCH_PUBLIC_READ_WINDOW_SECONDS`, 300) |
+| `CIVICWATCH_EXPORTS_PER_USER` | `20` | CSV exports per user per window (`CIVICWATCH_EXPORT_WINDOW_SECONDS`, 3600) |
+| `CIVICWATCH_MAX_REQUEST_BYTES` / `CIVICWATCH_MAX_BOUNDARY_REQUEST_BYTES` | `1048576` / `8388608` | Largest request body; photo uploads use `PHOTO_MAX_UPLOAD_BYTES` |
 | `CIVICWATCH_SMTP_HOST` | unset | SMTP server; unset disables email (in-app notifications still work) |
 | `CIVICWATCH_SMTP_PORT` | `587` | |
 | `CIVICWATCH_SMTP_USERNAME`, `CIVICWATCH_SMTP_PASSWORD` | unset | SMTP credentials (secret) |
@@ -118,7 +121,64 @@ cd frontend && npm install && npm run dev
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000/api/v1` | API base URL baked into the frontend build |
 | `NEXT_PUBLIC_MAP_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Raster tile template. **Set a tile provider for production**: OpenStreetMap's public tile server forbids heavy app traffic |
 | `NEXT_PUBLIC_MAP_ATTRIBUTION` | OpenStreetMap contributors | Attribution required by the tile provider |
+| `NEXT_PUBLIC_MEDIA_ORIGINS` | `http://localhost:9000 http://127.0.0.1:9000` | Space-separated origins photos are served from (the storage public endpoint); used by the Content-Security-Policy |
+| `NEXT_PUBLIC_DEMO_MODE` | unset | `true` shows the "Demonstration site — sample data" banner on every page |
 
 ## Production
 
-Not yet defined (Milestone 6). Requirements already fixed: HTTPS only, secrets from a secret manager, the API connected as `civicwatch_app` and migrations as a separate non-superuser owner role (extensions installed by a DBA), private object storage, database role without superuser or table ownership for the app (needed for RLS), backups for PostgreSQL, uvicorn behind the proxy with `--proxy-headers --forwarded-allow-ips=<proxy IPs>` so rate limits see real client IPs, a separate `celery beat` process, and a private bucket (AWS S3 or another S3-compatible service; MinIO no longer publishes community images or binaries) with credentials limited to that bucket.
+### What you need
+
+- A Linux server with Docker (2 vCPU and 4 GB RAM is plenty to start), with ports 80 and 443 open.
+- A domain whose DNS points at the server (Caddy then gets the TLS certificate itself).
+- A **private** S3 bucket (AWS S3 `af-south-1` is the nearest region, or another S3-compatible service) and an access key limited to it. Allow `GET` from your domain in the bucket's CORS settings so browsers can show signed photo URLs.
+- Optional: an SMTP account for email, and a raster tile provider (OpenStreetMap's public tile server forbids heavy app traffic).
+
+### 1. Publish images
+
+Set these **repository variables** in GitHub (Settings → Secrets and variables → Actions → Variables): `PUBLIC_API_BASE_URL` (`https://your.domain/api/v1`), `PUBLIC_MEDIA_ORIGINS` (your bucket's origin, e.g. `https://bucket.s3.af-south-1.amazonaws.com`), `PUBLIC_MAP_TILE_URL`, and `PUBLIC_DEMO_MODE` (`true` for the demonstration site). Each push to `main` that passes CI then publishes `ghcr.io/<owner>/<repo>-api:<sha>` and `-web:<sha>` (`.github/workflows/release.yml`). The web image bakes these addresses in, including into its Content-Security-Policy, so changing them means a new build.
+
+### 2. Start the stack
+
+On the server, with a checkout of the repository (for `deploy/` and `docker/db/init/`):
+
+```bash
+cp deploy/.env.production.example deploy/.env.production
+```
+
+Fill in every value (strong, URL-safe passwords; the image tags you want), then:
+
+```bash
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env.production up -d
+```
+
+`migrate` applies migrations as the owner role and exits; `api`, `worker` and `beat` (exactly one scheduler) then start. The API refuses to start with unsafe settings (plain-HTTP origins, missing storage credentials, no separate migration URL, email without TLS or the worker role).
+
+### 3. First administrator and (optionally) demo data
+
+Register your own account in the web app, then:
+
+```bash
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env.production exec api python -m app.cli grant-platform-admin you@example.org
+```
+
+For the public demonstration site only (adds labelled sample councils, staff, residents and reports through the real workflow, and prints the sample accounts' generated passwords once):
+
+```bash
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env.production exec api python -m app.cli seed-demo --confirm
+```
+
+### Upgrades, backups and logs
+
+- Upgrade: change `API_IMAGE`/`WEB_IMAGE` to the new SHA and run the same `up -d`; `migrate` runs first. Migrations are additive (`docs/03-database-design.md`).
+- Back up the `db-data` volume with `pg_dump` from the `db` container on a schedule, keep copies off the server, and test a restore. Photos live in the bucket; enable its versioning.
+- Logs are JSON on stdout (`docker compose logs`). Caddy's access log omits query strings, cookies and CSRF headers.
+
+### Regenerating the dependency lock
+
+After changing runtime dependencies in `backend/pyproject.toml`, rebuild `backend/requirements.lock` in a clean Python 3.12 environment:
+
+```bash
+python3.12 -m venv /tmp/lock && /tmp/lock/bin/pip install ./backend && /tmp/lock/bin/pip freeze --exclude civicwatch-backend > backend/requirements.lock
+```
+
+Restore the two comment lines at the top of the file afterwards.

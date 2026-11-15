@@ -5,9 +5,16 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
 
-from app.api.deps import CouncilAccessDep, DbDep
+from app.api.deps import (
+    CouncilAccessDep,
+    DbDep,
+    PublicReadLimit,
+    SettingsDep,
+    get_rate_limiter,
+)
+from app.core.rate_limit import RateLimiter
 from app.schemas.analytics import PerformanceRead, PublicStatsRead
 from app.services.analytics import AnalyticsService
 
@@ -21,6 +28,7 @@ _STAFF_ERRORS = {
 
 @router.get(
     "/analytics/public",
+    dependencies=[PublicReadLimit],
     response_model=PublicStatsRead,
     summary="Public statistics about verified public reports",
 )
@@ -61,9 +69,17 @@ def council_performance(
 def export_reports(
     access: CouncilAccessDep,
     db: DbDep,
+    settings: SettingsDep,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
     start: Annotated[date, Query(alias="from")],
     end: Annotated[date, Query(alias="to")],
 ) -> Response:
+    limiter.hit(
+        "export:user",
+        str(access.user.id),
+        limit=settings.exports_per_user,
+        window_seconds=settings.export_window_seconds,
+    )
     body, _ = AnalyticsService(db).export_csv(access, start, end)
     filename = f"civicwatch-{access.council.slug}-{start.isoformat()}-to-{end.isoformat()}.csv"
     return Response(

@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from app.api.deps import CouncilAccessDep, CurrentUser, DbDep, SettingsDep
+from app.api.deps import CouncilAccessDep, CurrentUser, DbDep, PublicReadLimit, SettingsDep
 from app.api.v1.issue_presenters import IssuePresenter
 from app.api.v1.operations import _summary, get_presenter
 from app.models.councils import BoundarySource
@@ -79,6 +79,7 @@ def council_boundaries(response: Response, db: DbDep, settings: SettingsDep) -> 
 
 @router.get(
     "/councils/locate",
+    dependencies=[PublicReadLimit],
     response_model=list[LocatedCouncil],
     summary="Councils whose boundary covers a point (smallest first)",
 )
@@ -144,7 +145,10 @@ def clear_boundary(
 
 
 @router.get(
-    "/map/clusters", response_model=ClustersResponse, summary="Clusters of published public reports"
+    "/map/clusters",
+    dependencies=[PublicReadLimit],
+    response_model=ClustersResponse,
+    summary="Clusters of published public reports",
 )
 def public_clusters(
     bbox: BBoxDep,
@@ -163,6 +167,7 @@ def public_clusters(
 
 @router.get(
     "/issues/nearby",
+    dependencies=[PublicReadLimit],
     response_model=list[NearbyPublicIssue],
     summary="Published public reports near a point, closest first",
 )

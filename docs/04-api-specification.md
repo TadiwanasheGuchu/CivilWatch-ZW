@@ -46,7 +46,8 @@ Returns `503` with the same shape and `"status": "degraded"` when any dependency
 - Sign-in responses and `GET /auth/session` return a `csrf_token`. Every `POST`/`PUT`/`PATCH`/`DELETE` made with a session must send it as `X-CSRF-Token`, otherwise `403 csrf_token_invalid`.
 - State-changing requests carrying an `Origin` header that is not an allowed frontend origin are refused with `403 origin_not_allowed`.
 - `401 authentication_required` means there is no valid session (missing, expired, idle, revoked, or the account was deactivated). Council staff and platform admins have shorter session limits than residents (see `06-security-and-privacy.md`).
-- `429 rate_limited` includes a `Retry-After` header and `details.retry_after_seconds`.
+- `429 rate_limited` includes a `Retry-After` header and `details.retry_after_seconds`. Besides the per-endpoint limits below, the public endpoints that run spatial or aggregate queries (`GET /issues`, `/issues/nearby`, `/map/clusters`, `/councils/locate`, `/analytics/public`) share a limit of 600 requests per IP per 5 minutes, and exports are limited to 20 per user per hour.
+- `413 request_too_large` for bodies over 1 MB (photo uploads: 10 MB plus form overhead; boundary uploads: 8 MB), whether or not `Content-Length` is sent.
 
 `SessionResponse`:
 

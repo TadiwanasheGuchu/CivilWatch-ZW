@@ -3,13 +3,33 @@
 ## Implemented controls (foundation)
 
 - Secrets only from environment variables; `.env` is git-ignored; `.env.example` holds non-secret local defaults. Docker Compose refuses to start without `POSTGRES_PASSWORD`.
-- Security headers on API responses: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Cross-Origin-Resource-Policy`, restrictive `Content-Security-Policy`. Frontend sets equivalent headers plus a `Permissions-Policy` that allows only camera and geolocation for this origin.
+- Security headers on API responses: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Cross-Origin-Resource-Policy`, restrictive `Content-Security-Policy`, and `Strict-Transport-Security` in staging and production. Frontend sets equivalent headers plus HSTS, a `Permissions-Policy` that allows only camera and geolocation for this origin, and a Content-Security-Policy (see the Milestone 6 review).
 - CORS restricted to configured origins (`CIVICWATCH_CORS_ORIGINS`), tested.
 - Uniform error envelope; unhandled exceptions are logged server-side and never leak internals.
 - Request logs record method, path, status and duration — **not** query strings, bodies or headers, so tokens and personal data are not logged.
 - Incoming `X-Request-ID` is validated to prevent log/header injection.
 - OpenAPI docs disabled in production.
 - Containers run as non-root users; local service ports bind to `127.0.0.1` only.
+
+## Security review (Milestone 6, stage 6.1)
+
+A review of the whole application before deployment. Findings and what was done:
+
+| Area | Finding | Resolution |
+|---|---|---|
+| Dependencies | `pip-audit` and `npm audit --omit=dev` | No known vulnerabilities. Both now run in CI (`dependency-audit` job) against the locked runtime dependencies |
+| Request size | Only photo uploads were size-checked, after Starlette had already spooled the body; a chunked request could fill the disk | `BodySizeLimitMiddleware` counts bytes as they arrive and answers `413` (1 MB default, photo and boundary limits); Caddy also caps bodies at 11 MB |
+| Rate limits | Public spatial and aggregate endpoints, and exports, had no limit | Per-IP limit on public reads, per-user limit on exports (Redis, failing closed like the others) |
+| Frontend headers | No Content-Security-Policy or HSTS | CSP: `default-src 'self'`; scripts only from this origin; images only from this origin, the tile server and the photo storage origin; connections only to the API and tile server; no plugins, framing, foreign form posts or `<base>` changes. HSTS on both API (deployed environments) and frontend |
+| CSP trade-off | Next.js inlines hydration scripts, so `script-src` includes `'unsafe-inline'` | Accepted: a nonce would force every page to render per request, against the low-bandwidth goals. Mitigated by React's escaping, no `dangerouslySetInnerHTML`, and the origin restrictions above. Revisit if user-supplied HTML is ever rendered |
+| Production image | Included test tools and tests; dependency versions floated | Separate `runtime` target with `requirements.lock`; CI checks the image has no tests or pytest |
+| Deployed settings | Only cookie settings were checked at start-up | Staging and production refuse plain-HTTP origins and web URL, missing storage credentials, a missing separate migration URL (the API must not connect as the owner), email without the worker role, and SMTP without TLS |
+| Proxy | Client IPs for rate limits depend on proxy headers | Runtime image runs uvicorn with `--proxy-headers`; only Caddy can reach the API in `deploy/compose.prod.yml` |
+| Logs | Proxy logs could record query strings (coordinates) and cookies | The Caddyfile removes query strings, cookies and CSRF headers from access logs |
+
+Reviewed with no change needed: tenant isolation (API checks plus RLS, tested per table), private media (signed 5-minute URLs, tested against real MinIO in CI), workflow transitions (table-driven, tested for every invalid move), CSRF and origin checks, session handling, password hashing, audit logging, analytics privacy and export contents.
+
+Remaining before a public launch (need decisions or accounts, see `08-development-roadmap.md`): malware scanning of uploads (re-encoding already removes active content), a managed secret store, database backups and restore drills, and an external penetration test.
 
 ## Authentication (implemented, stage 1.2)
 

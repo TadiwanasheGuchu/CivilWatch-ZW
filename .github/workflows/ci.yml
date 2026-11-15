@@ -141,6 +141,7 @@ jobs:
           CIVICWATCH_SESSION_COOKIE_SECURE: "false"
           CIVICWATCH_REGISTRATIONS_PER_IP: "10000"
           CIVICWATCH_LOGIN_ATTEMPTS_PER_IP: "10000"
+          CIVICWATCH_PUBLIC_READS_PER_IP: "100000"
         run: |
           pip install -e .
           alembic upgrade head
@@ -163,3 +164,31 @@ jobs:
       - name: API log on failure
         if: failure()
         run: cat backend/api.log
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Audit Python runtime dependencies
+        run: pip install pip-audit && pip-audit --requirement backend/requirements.lock --disable-pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit npm runtime dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production API image
+        run: docker build --target runtime -t civicwatch-api:ci backend
+      - name: The production image contains no tests or test tools
+        run: |
+          docker run --rm civicwatch-api:ci sh -c '! test -d /app/tests && ! python -c "import pytest"'
+      - name: Build the production web image
+        run: docker build -t civicwatch-web:ci frontend

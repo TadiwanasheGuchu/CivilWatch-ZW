@@ -1,0 +1,39 @@
+# One domain: the API under /api, everything else to the web app.
+# Caddy obtains and renews the TLS certificate automatically.
+{$CIVICWATCH_DOMAIN} {
+	encode zstd gzip
+
+	# Photos are the largest requests (10 MB plus form overhead).
+	request_body {
+		max_size 11MB
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	# The API documentation is disabled in production; never expose it.
+	handle /docs* {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output stdout
+		# Query strings can carry personal data (e.g. coordinates); cookies and
+		# CSRF tokens are credentials.
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete *
+				}
+				request>headers>Cookie delete
+				request>headers>X-Csrf-Token delete
+			}
+		}
+	}
+}
